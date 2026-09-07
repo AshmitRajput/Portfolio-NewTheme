@@ -1,18 +1,26 @@
+import { useEffect, useState } from 'react'
+// Adjust this import if your hero file/export is named differently
 import Hero from './components/hero'
-import Projects from './components/projects'
+import PortfolioOS from './components/os/PortfolioOS'
 import './App.css'
-import Marquee from './components/marquee'
-import Achievements from './components/achievements'
-import Work from './components/work'
 
 function App() {
+  const [hash, setHash] = useState(() => window.location.hash)
+
+  useEffect(() => {
+    const onHashChange = () => setHash(window.location.hash)
+    window.addEventListener('hashchange', onHashChange)
+    return () => window.removeEventListener('hashchange', onHashChange)
+  }, [])
+
+  // #app, #app/about, #app/projects... all land in the OS
+  if (hash.startsWith('#app')) {
+    return <PortfolioOS />
+  }
+
   return (
     <main className="page">
       <Hero />
-      <Marquee/>
-      <Work />
-      <Achievements />
-      <Projects />
     </main>
   )
 }
