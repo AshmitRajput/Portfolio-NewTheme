@@ -1,8 +1,3 @@
-/* ==================================================================
-   Portfolio OS — app content styles (shared by every app window)
-   Inherits --os-* tokens from .os-root in PortfolioOS.css
-   ================================================================== */
-
 .app {
   max-width: 68ch;
   line-height: 1.55;

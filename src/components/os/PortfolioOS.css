@@ -1,8 +1,3 @@
-/* ==================================================================
-   Portfolio OS — Phase 1
-   Dark glass desktop · translucent windows · macOS-inspired
-   ================================================================== */
-
 .os-root {
   --os-menubar-h: 38px;
   --os-glass: rgba(255, 255, 255, 0.07);
