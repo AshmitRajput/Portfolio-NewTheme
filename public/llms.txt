@@ -1,0 +1,11 @@
+# Ashmit Rajput
+
+> Portfolio site showcasing projects, skills, and experience.
+
+## Pages
+- [Home](https://ashmitrajput.xyz/): Landing page and hero intro
+- [Projects](https://ashmitrajput.xyz/#app/projects): Selected work and case studies
+- [About](https://ashmitrajput.xyz/#app/about): Background and skills
+
+## Contact
+- Email: ashmitrajput1007@gmail.com
