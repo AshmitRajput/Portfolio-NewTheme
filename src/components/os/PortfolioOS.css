@@ -1,5 +1,39 @@
+/* ==================================================================
+   Portfolio OS — Phase 2
+   Design tokens · larger icon/Dock system · container-query foundation
+   · window manager animations (minimize/restore)
+   ================================================================== */
+
 .os-root {
+  /* ---------------------------------------------------------------
+     Design tokens. Everything sizing-related in this file (and in
+     apps.css) reads from these variables instead of hardcoded px, so
+     a later Settings panel can change icon size / dock size / motion
+     by just rewriting these custom properties.
+     --------------------------------------------------------------- */
   --os-menubar-h: 38px;
+
+  /* Desktop icons */
+  --os-desktop-icon-size: 84px;   /* the whole tappable tile */
+  --os-desktop-icon-glyph: 56px;  /* the glyph "tile" inside it */
+  --os-desktop-label-size: 14px;
+
+  /* Dock */
+  --os-dock-icon-size: 60px;
+  --os-dock-height: 88px;
+  --os-dock-gap: 10px;
+  --os-dock-padding-x: 16px;
+
+  /* Typography scale — used across apps.css via clamp() so text
+     scales gently with window width instead of jumping. */
+  --os-text-xs: clamp(11px, 0.95vw, 12.5px);
+  --os-text-sm: clamp(12.5px, 1vw, 14px);
+  --os-text-md: clamp(14px, 1.05vw, 15.5px);
+  --os-text-lg: clamp(15.5px, 1.3vw, 18px);
+  --os-text-xl: clamp(19px, 1.8vw, 24px);
+  --os-title: clamp(21px, 2.1vw, 28px);
+  --os-display: clamp(26px, 2.8vw, 36px);
+
   --os-glass: rgba(255, 255, 255, 0.07);
   --os-glass-strong: rgba(30, 34, 46, 0.62);
   --os-hairline: rgba(255, 255, 255, 0.12);
@@ -59,7 +93,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 0 16px;
-  font-size: 13px;
+  font-size: var(--os-text-sm);
   background: rgba(16, 18, 26, 0.55);
   backdrop-filter: blur(24px) saturate(1.4);
   -webkit-backdrop-filter: blur(24px) saturate(1.4);
@@ -89,9 +123,92 @@
   color: var(--os-text);
 }
 
+/* Phase 3: File/Edit/View/Window/Help are now real dropdown menus, so
+   .os-menubar__item is a <button>, not a static <span>. */
+.os-menu {
+  position: relative;
+}
+
 .os-menubar__item {
+  padding: 3px 8px;
+  border-radius: 6px;
   color: var(--os-text-dim);
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.os-menubar__item:hover,
+.os-menubar__item--open {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--os-text);
+}
+
+.os-menu__dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 7000;
+  min-width: 220px;
+  padding: 6px;
+  border-radius: 12px;
+  background: rgba(24, 27, 38, 0.78);
+  backdrop-filter: blur(26px) saturate(1.5);
+  -webkit-backdrop-filter: blur(26px) saturate(1.5);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.45);
+  animation: os-window-in 0.14s cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+
+.os-root .os-menu__option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  width: 100%;
+  padding: 7px 10px;
+  font-size: var(--os-text-sm);
+  text-align: left;
+  border-radius: 7px;
+  color: var(--os-text);
+  cursor: pointer;
+}
+
+.os-root .os-menu__option:hover:not(:disabled) {
+  background: var(--os-accent);
+  color: #fff;
+}
+
+.os-root .os-menu__option:disabled {
+  color: var(--os-text-dim);
+  opacity: 0.45;
   cursor: default;
+}
+
+.os-menu__option-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.os-menu__check {
+  display: inline-block;
+  width: 12px;
+  font-size: 11px;
+}
+
+.os-menu__shortcut {
+  font-size: var(--os-text-xs);
+  color: var(--os-text-dim);
+  letter-spacing: 0.02em;
+}
+
+.os-root .os-menu__option:hover:not(:disabled) .os-menu__shortcut {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.os-menu__separator {
+  height: 1px;
+  margin: 5px 6px;
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .os-menubar__clock {
@@ -110,27 +227,31 @@
 
 .os-desktop__icons {
   position: absolute;
-  top: 24px;
-  left: 24px;
+  top: 28px;
+  left: 28px;
   display: grid;
   grid-auto-flow: column;
   grid-template-rows: repeat(4, auto);
-  gap: 10px;
+  gap: 16px;
 }
 
 .os-desktop-icon {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
-  width: 92px;
-  padding: 10px 6px;
-  border-radius: 12px;
-  transition: background 0.15s ease;
+  gap: 8px;
+  width: calc(var(--os-desktop-icon-size) + 28px);
+  padding: 12px 8px;
+  border-radius: 16px;
+  transition: background 0.15s ease, transform 0.15s ease;
 }
 
 .os-desktop-icon:hover {
   background: rgba(255, 255, 255, 0.06);
+}
+
+.os-desktop-icon:active {
+  transform: scale(0.97);
 }
 
 .os-desktop-icon--selected {
@@ -144,18 +265,19 @@
 .os-desktop-icon__glyph {
   display: grid;
   place-items: center;
-  width: 52px;
-  height: 52px;
-  font-size: 30px;
-  border-radius: 14px;
+  width: var(--os-desktop-icon-glyph);
+  height: var(--os-desktop-icon-glyph);
+  font-size: calc(var(--os-desktop-icon-glyph) * 0.56);
+  border-radius: 18px;
   background: var(--os-glass);
   border: 1px solid var(--os-hairline);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
 }
 
 .os-desktop-icon__label {
-  font-size: 12px;
+  font-size: var(--os-desktop-label-size);
   line-height: 1.25;
   text-align: center;
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
@@ -178,7 +300,8 @@
   box-shadow:
     0 24px 60px rgba(0, 0, 0, 0.45),
     0 4px 14px rgba(0, 0, 0, 0.3);
-  animation: os-window-in 0.18s ease-out;
+  animation: os-window-in 0.2s cubic-bezier(0.2, 0.8, 0.3, 1);
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
 .os-window--focused {
@@ -192,15 +315,16 @@
   left: 10px;
   right: 10px;
   top: 8px;
-  bottom: 96px;
+  bottom: calc(var(--os-dock-height) + 24px);
   width: auto;
   height: auto;
+  transition: left 0.18s ease, right 0.18s ease, top 0.18s ease, bottom 0.18s ease;
 }
 
 @keyframes os-window-in {
   from {
     opacity: 0;
-    transform: scale(0.97) translateY(6px);
+    transform: scale(0.96) translateY(10px);
   }
   to {
     opacity: 1;
@@ -208,11 +332,53 @@
   }
 }
 
+/* ------------------------------------------------------------------
+   Minimize / restore (Phase 2)
+   The window shrinks toward the bottom of the screen (roughly where
+   the Dock sits) and fades out, then the WindowManager actually
+   removes it from the visible list once this finishes. Restoring
+   plays the same motion in reverse. Duration must match
+   MINIMIZE_ANIMATION_MS in PortfolioOS.tsx.
+   ------------------------------------------------------------------ */
+
+.os-window--minimizing {
+  animation: os-window-minimize 0.26s cubic-bezier(0.4, 0, 0.8, 0.4) forwards;
+  transform-origin: 50% 100%;
+  pointer-events: none;
+}
+
+.os-window--restoring {
+  animation: os-window-restore 0.26s cubic-bezier(0.2, 0.8, 0.3, 1) both;
+  transform-origin: 50% 100%;
+}
+
+@keyframes os-window-minimize {
+  from {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.32) translateY(46vh);
+  }
+}
+
+@keyframes os-window-restore {
+  from {
+    opacity: 0;
+    transform: scale(0.32) translateY(46vh);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
 .os-window__titlebar {
   display: flex;
   align-items: center;
   flex-shrink: 0;
-  height: 40px;
+  height: 42px;
   padding: 0 14px;
   cursor: grab;
   touch-action: none;
@@ -227,7 +393,7 @@
 .os-window__title {
   flex: 1;
   text-align: center;
-  font-size: 13px;
+  font-size: var(--os-text-sm);
   font-weight: 600;
   color: var(--os-text-dim);
 }
@@ -245,9 +411,18 @@
   overflow: auto;
   padding: 22px 24px;
   user-select: text;
+
+  /*
+    Container-query root. Every app inside (About/Projects/Experience/
+    ...) queries THIS element's width via `@container` in apps.css, so
+    layouts reflow based on the window's own size — not the browser
+    viewport, and never via `transform: scale()`.
+  */
+  container-type: inline-size;
+  container-name: app-window;
 }
 
-/* Traffic lights */
+/* Traffic lights — mac-style glyphs that appear on hover of the group */
 
 .os-traffic {
   display: flex;
@@ -256,8 +431,11 @@
 }
 
 .os-traffic__btn {
-  width: 12px;
-  height: 12px;
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 13px;
+  height: 13px;
   border-radius: 50%;
   border: 1px solid rgba(0, 0, 0, 0.25);
   transition: filter 0.12s ease;
@@ -265,6 +443,18 @@
 
 .os-traffic__btn:hover {
   filter: brightness(1.15);
+}
+
+.os-traffic__glyph {
+  width: 8px;
+  height: 8px;
+  opacity: 0;
+  transition: opacity 0.1s ease;
+  pointer-events: none;
+}
+
+.os-traffic:hover .os-traffic__glyph {
+  opacity: 1;
 }
 
 /* Scoped under .os-root so these beat the `.os-root button` reset above */
@@ -281,23 +471,82 @@
   background: #28c840;
 }
 
-/* Resize handle — bottom-right corner (Phase 2) */
+/* Resize handles — every edge + corner */
 
-.os-window__resize {
+.os-window__edge {
   position: absolute;
-  right: 0;
-  bottom: 0;
-  width: 20px;
-  height: 20px;
-  cursor: nwse-resize;
-  touch-action: none;
+  z-index: 2;
 }
 
-.os-window__resize::after {
+.os-window__edge--n {
+  top: -4px;
+  left: 10px;
+  right: 10px;
+  height: 8px;
+  cursor: ns-resize;
+}
+
+.os-window__edge--s {
+  bottom: -4px;
+  left: 10px;
+  right: 10px;
+  height: 8px;
+  cursor: ns-resize;
+}
+
+.os-window__edge--e {
+  top: 10px;
+  bottom: 10px;
+  right: -4px;
+  width: 8px;
+  cursor: ew-resize;
+}
+
+.os-window__edge--w {
+  top: 10px;
+  bottom: 10px;
+  left: -4px;
+  width: 8px;
+  cursor: ew-resize;
+}
+
+.os-window__edge--ne {
+  top: -5px;
+  right: -5px;
+  width: 16px;
+  height: 16px;
+  cursor: nesw-resize;
+}
+
+.os-window__edge--nw {
+  top: -5px;
+  left: -5px;
+  width: 16px;
+  height: 16px;
+  cursor: nwse-resize;
+}
+
+.os-window__edge--se {
+  bottom: -5px;
+  right: -5px;
+  width: 16px;
+  height: 16px;
+  cursor: nwse-resize;
+}
+
+.os-window__edge--sw {
+  bottom: -5px;
+  left: -5px;
+  width: 16px;
+  height: 16px;
+  cursor: nesw-resize;
+}
+
+.os-window__edge--se::after {
   content: '';
   position: absolute;
-  right: 5px;
-  bottom: 5px;
+  right: 6px;
+  bottom: 6px;
   width: 8px;
   height: 8px;
   border-right: 2px solid rgba(255, 255, 255, 0.22);
@@ -306,7 +555,7 @@
   transition: border-color 0.12s ease;
 }
 
-.os-window__resize:hover::after {
+.os-window__edge--se:hover::after {
   border-color: rgba(255, 255, 255, 0.55);
 }
 
@@ -314,6 +563,10 @@
 
 .os-root .os-window:not(.os-window--focused) .os-traffic__btn {
   background: rgba(255, 255, 255, 0.22);
+}
+
+.os-root .os-window:not(.os-window--focused) .os-traffic__glyph {
+  opacity: 0 !important;
 }
 
 /* App content styles live in apps/apps.css */
@@ -325,7 +578,7 @@
 .os-dock {
   position: absolute;
   left: 50%;
-  bottom: 14px;
+  bottom: 16px;
   transform: translateX(-50%);
   z-index: 6000;
 }
@@ -333,14 +586,15 @@
 .os-dock__tray {
   display: flex;
   align-items: flex-end;
-  gap: 6px;
-  padding: 8px 10px;
-  border-radius: 20px;
+  gap: var(--os-dock-gap);
+  height: var(--os-dock-height);
+  padding: 0 var(--os-dock-padding-x);
+  border-radius: 26px;
   background: rgba(24, 27, 38, 0.55);
   backdrop-filter: blur(26px) saturate(1.5);
   -webkit-backdrop-filter: blur(26px) saturate(1.5);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.45);
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.45);
 }
 
 .os-dock__item {
@@ -348,31 +602,37 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 4px 6px 2px;
-  border-radius: 12px;
-  transition: transform 0.16s ease, background 0.16s ease;
+  justify-content: flex-end;
+  height: 100%;
+  padding: 8px 8px 10px;
+  border-radius: 16px;
+  transition: transform 0.16s cubic-bezier(0.2, 0.8, 0.3, 1), background 0.16s ease;
 }
 
 .os-dock__item:hover {
-  transform: translateY(-5px);
+  transform: translateY(-10px) scale(1.12);
   background: rgba(255, 255, 255, 0.08);
+}
+
+.os-dock__item:active {
+  transform: translateY(-4px) scale(1.04);
 }
 
 .os-dock__icon {
   display: grid;
   place-items: center;
-  width: 44px;
-  height: 44px;
-  font-size: 27px;
-  border-radius: 11px;
+  width: var(--os-dock-icon-size);
+  height: var(--os-dock-icon-size);
+  font-size: calc(var(--os-dock-icon-size) * 0.56);
+  border-radius: 16px;
   background: rgba(255, 255, 255, 0.07);
   border: 1px solid rgba(255, 255, 255, 0.09);
 }
 
 .os-dock__dot {
-  width: 4px;
-  height: 4px;
-  margin-top: 3px;
+  width: 5px;
+  height: 5px;
+  margin-top: 5px;
   border-radius: 50%;
   background: transparent;
 }
@@ -383,12 +643,12 @@
 
 .os-dock__tooltip {
   position: absolute;
-  bottom: calc(100% + 10px);
+  bottom: calc(100% + 14px);
   left: 50%;
   transform: translateX(-50%);
-  padding: 4px 10px;
-  border-radius: 7px;
-  font-size: 12px;
+  padding: 5px 11px;
+  border-radius: 8px;
+  font-size: var(--os-text-xs);
   white-space: nowrap;
   background: rgba(20, 23, 32, 0.85);
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -411,6 +671,12 @@
   .os-window {
     animation: none;
   }
+  .os-window--minimizing,
+  .os-window--restoring {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
   .os-dock__item,
   .os-dock__item:hover {
     transform: none;
@@ -418,21 +684,29 @@
   }
 }
 
-/* Phase 1 stopgap: below tablet width, let windows fill the screen.
-   The real mobile experience (full-screen app cards) is a later phase. */
+/* Phase 1 stopgap: below tablet width, let windows fill the screen and
+   scale the token system down a notch. The full mobile experience
+   (full-screen app cards) is a later phase. */
 @media (max-width: 720px) {
+  .os-root {
+    --os-desktop-icon-size: 64px;
+    --os-desktop-icon-glyph: 48px;
+    --os-dock-icon-size: 48px;
+    --os-dock-height: 72px;
+  }
+
   .os-window {
     left: 8px !important;
     right: 8px !important;
     top: calc(var(--os-menubar-h) + 8px) !important;
-    bottom: 92px !important;
+    bottom: calc(var(--os-dock-height) + 20px) !important;
     width: auto !important;
     height: auto !important;
   }
   .os-desktop__icons {
     grid-template-rows: repeat(2, auto);
   }
-  .os-window__resize {
+  .os-window__edge {
     display: none; /* windows are forced full-size on small screens */
   }
 }

@@ -1,18 +1,24 @@
 import type { AppDefinition } from '../components/os/types'
 
 /**
- * App registry. Adding an app here makes it appear on the desktop / Dock
- * automatically — you also need a component for it in
- * components/os/apps/index.ts.
+ * Phase 2 — application registry.
+ *
+ * Every app declares its own natural size instead of sharing one
+ * generic default. A dense app like Projects or Resume wants more
+ * room to breathe than a short one like Contact; the WindowManager
+ * (PortfolioOS.tsx) reads these values when it opens a window, and
+ * refuses to resize below minWidth/minHeight.
  */
 export const APPS: AppDefinition[] = [
   {
     id: 'about',
     title: 'About Me',
-    icon: '👤',
+    icon: '🧑‍💻',
     showOnDesktop: true,
     showInDock: true,
-    defaultSize: { width: 620, height: 520 },
+    defaultSize: { width: 850, height: 600 },
+    minWidth: 420,
+    minHeight: 380,
   },
   {
     id: 'projects',
@@ -20,15 +26,19 @@ export const APPS: AppDefinition[] = [
     icon: '📁',
     showOnDesktop: true,
     showInDock: true,
-    defaultSize: { width: 720, height: 540 },
+    defaultSize: { width: 950, height: 650 },
+    minWidth: 460,
+    minHeight: 400,
   },
   {
     id: 'experience',
     title: 'Experience',
-    icon: '💼',
+    icon: '🧭',
     showOnDesktop: true,
-    showInDock: true,
-    defaultSize: { width: 620, height: 520 },
+    showInDock: false,
+    defaultSize: { width: 800, height: 600 },
+    minWidth: 420,
+    minHeight: 380,
   },
   {
     id: 'skills',
@@ -36,7 +46,9 @@ export const APPS: AppDefinition[] = [
     icon: '🛠️',
     showOnDesktop: true,
     showInDock: true,
-    defaultSize: { width: 600, height: 480 },
+    defaultSize: { width: 700, height: 560 },
+    minWidth: 380,
+    minHeight: 340,
   },
   {
     id: 'resume',
@@ -44,22 +56,28 @@ export const APPS: AppDefinition[] = [
     icon: '📄',
     showOnDesktop: true,
     showInDock: true,
-    defaultSize: { width: 720, height: 620 },
+    defaultSize: { width: 850, height: 700 },
+    minWidth: 420,
+    minHeight: 420,
   },
   {
     id: 'contact',
     title: 'Contact',
     icon: '✉️',
     showOnDesktop: true,
-    showInDock: true,
-    defaultSize: { width: 520, height: 400 },
+    showInDock: false,
+    defaultSize: { width: 650, height: 500 },
+    minWidth: 380,
+    minHeight: 340,
   },
   {
     id: 'terminal',
     title: 'Terminal',
-    icon: '⌨️',
-    showOnDesktop: true,
+    icon: '💻',
+    showOnDesktop: false,
     showInDock: true,
-    defaultSize: { width: 600, height: 380 },
+    defaultSize: { width: 760, height: 480 },
+    minWidth: 420,
+    minHeight: 300,
   },
 ]

@@ -1,6 +1,520 @@
-.page {
+/* ==================================================================
+   Portfolio OS — app content styles (shared by every app window)
+   Inherits --os-* tokens from .os-root in PortfolioOS.css.
+
+   Phase 1: layouts reflow via @container queries against the
+   window's own width (see `container-name: app-window` on
+   .os-window__content in PortfolioOS.css) — never via transform:scale.
+   ================================================================== */
+
+.app {
+  max-width: 68ch;
+  line-height: 1.55;
+}
+
+.app__title {
+  margin: 0 0 4px;
+  font-size: var(--os-title);
+  font-weight: 700;
+  letter-spacing: -0.015em;
+}
+
+.app__section {
+  margin: 26px 0 10px;
+  font-size: var(--os-text-sm);
+  font-weight: 600;
+  color: var(--os-text-dim);
+}
+
+.app__lede {
+  margin: 0 0 14px;
+  font-size: var(--os-text-lg);
+  color: var(--os-text);
+}
+
+.app__body {
+  margin: 0 0 12px;
+  font-size: var(--os-text-md);
+  color: var(--os-text-dim);
+}
+
+.app__muted {
+  font-size: var(--os-text-sm);
+  color: var(--os-text-dim);
+}
+
+.app__list {
+  margin: 0;
+  padding-left: 18px;
+  font-size: var(--os-text-md);
+  color: var(--os-text-dim);
+}
+
+.app__list li + li {
+  margin-top: 4px;
+}
+
+/* Chips */
+
+.app__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.app__chip {
+  padding: 4px 10px;
+  font-size: var(--os-text-xs);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.app__chips--small .app__chip {
+  padding: 2px 8px;
+  font-size: 11.5px;
+}
+
+.app__chip--ghost {
+  background: transparent;
+  color: var(--os-text-dim);
+}
+
+/* Buttons & actions */
+
+.app__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 24px;
+}
+
+/* Scoped under .os-root so these beat the `.os-root button` reset */
+
+.os-root .app__btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 14px;
+  font-size: var(--os-text-sm);
+  font-weight: 500;
+  border-radius: 9px;
+  color: var(--os-text);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.os-root .app__btn:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.os-root .app__btn--primary {
+  background: var(--os-accent);
+  border-color: transparent;
+  color: #fff;
+}
+
+.os-root .app__btn--primary:hover {
+  background: #5f99ff;
+}
+
+.os-root .app__back {
+  margin-bottom: 14px;
+  font-size: var(--os-text-sm);
+  color: var(--os-accent);
+}
+
+.os-root .app__back:hover {
+  text-decoration: underline;
+}
+
+/* ------------------------------------------------------------------
+   About — reflows between a stacked layout (narrow window) and a
+   two-column "photo rail + content" layout (wide window), purely
+   from the window's own width via @container.
+   ------------------------------------------------------------------ */
+
+.app-about {
+  max-width: none;
+}
+
+.app-about__header {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.app-about__avatar {
+  display: grid;
+  place-items: center;
+  width: 60px;
+  height: 60px;
+  flex-shrink: 0;
+  font-size: 26px;
+  font-weight: 700;
+  border-radius: 50%;
+  color: #fff;
+  background: linear-gradient(135deg, #5d6cfa, #a855f7);
+  box-shadow: 0 6px 18px rgba(93, 108, 250, 0.35);
+}
+
+.app-about__role {
+  margin: 0;
+  font-size: var(--os-text-md);
+  color: var(--os-text-dim);
+}
+
+.app-about__education {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--os-text-md);
+}
+
+.app-about__education li + li {
+  margin-top: 12px;
+}
+
+.app-about__edu-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+/* Wide window: sit the avatar beside the name/role, and let the whole
+   article become a two-column layout (rail + body) instead of one
+   long stacked column. */
+@container app-window (min-width: 640px) {
+  .app-about {
+    display: grid;
+    grid-template-columns: 200px 1fr;
+    gap: 32px;
+    max-width: none;
+  }
+
+  .app-about__header {
+    grid-column: 1 / -1;
+    flex-direction: row;
+    align-items: center;
+  }
+
+  .app-about__avatar {
+    width: 76px;
+    height: 76px;
+    font-size: 32px;
+  }
+}
+
+@container app-window (min-width: 900px) {
+  .app-about__avatar {
+    width: 96px;
+    height: 96px;
+    font-size: 40px;
+  }
+}
+
+/* Projects */
+
+.app-projects {
+  max-width: none;
+}
+
+.app-projects__header,
+.app-project__header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.app-projects__grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+/* Reflow the project grid by container width, not viewport width, so
+   a wide window gets more columns even inside a narrow browser tab. */
+@container app-window (min-width: 520px) {
+  .app-projects__grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@container app-window (min-width: 860px) {
+  .app-projects__grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@container app-window (min-width: 1180px) {
+  .app-projects__grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.os-root .app-projects__card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+  text-align: left;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+}
+
+.os-root .app-projects__card:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.16);
+  transform: translateY(-1px);
+}
+
+.app-projects__card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.app-projects__card h2 {
+  margin: 0;
+  font-size: var(--os-text-lg);
+  font-weight: 600;
+}
+
+.app-projects__card p {
+  margin: 0;
+  font-size: var(--os-text-sm);
+  color: var(--os-text-dim);
+}
+
+/* Experience */
+
+.app-experience__timeline {
+  margin: 18px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.app-experience__item {
+  position: relative;
+  display: flex;
+  gap: 16px;
+  padding-bottom: 24px;
+}
+
+.app-experience__item:not(:last-child)::before {
+  content: '';
+  position: absolute;
+  left: 5px;
+  top: 14px;
+  bottom: 0;
+  width: 1px;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.app-experience__marker {
+  flex-shrink: 0;
+  width: 11px;
+  height: 11px;
+  margin-top: 6px;
+  border-radius: 50%;
+  background: var(--os-accent);
+  box-shadow: 0 0 0 4px rgba(76, 141, 255, 0.18);
+}
+
+.app-experience__content {
+  flex: 1;
+}
+
+.app-experience__head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* Wide window: date sits inline next to the role instead of wrapping
+   onto its own line. */
+@container app-window (min-width: 560px) {
+  .app-experience__head {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
+  }
+}
+
+.app-experience__head h2 {
+  margin: 0;
+  font-size: var(--os-text-lg);
+  font-weight: 600;
+}
+
+.app-experience__company {
+  margin: 2px 0 8px;
+  font-size: var(--os-text-md);
+}
+
+/* Skills */
+
+.app-skills__groups {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 18px;
+  margin-top: 18px;
+}
+
+@container app-window (min-width: 640px) {
+  .app-skills__groups {
+    grid-template-columns: repeat(2, 1fr);
+    column-gap: 32px;
+  }
+}
+
+.app-skills__group h2 {
+  margin: 0 0 8px;
+  font-size: var(--os-text-sm);
+  font-weight: 600;
+  color: var(--os-text-dim);
+}
+
+/* Resume */
+
+.app-resume {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  max-width: none;
+}
+
+.app-resume__bar {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+@container app-window (min-width: 480px) {
+  .app-resume__bar {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+}
+
+.app-resume__frame {
+  flex: 1;
+  min-height: 300px;
   width: 100%;
-  min-height: 100svh;
-  background: var(--color-bg);
-  overflow-x: clip;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.app-resume__fallback {
+  margin: 10px 0 0;
+}
+
+.app-resume__fallback a {
+  color: var(--os-accent);
+}
+
+/* Contact */
+
+.app-contact__list {
+  margin: 18px 0 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.app-contact__row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: var(--os-text-md);
+}
+
+@container app-window (min-width: 460px) {
+  .app-contact__row {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+  }
+}
+
+.app-contact__label {
+  color: var(--os-text-dim);
+}
+
+.app-contact__value {
+  color: var(--os-text);
+  text-decoration: none;
+  text-align: left;
+  word-break: break-all;
+}
+
+@container app-window (min-width: 460px) {
+  .app-contact__value {
+    text-align: right;
+  }
+}
+
+.app-contact__value:hover {
+  color: var(--os-accent);
+}
+
+/* Terminal */
+
+.app-terminal {
+  height: 100%;
+  max-width: none;
+}
+
+.app-terminal pre {
+  margin: 0;
+  font-family: 'SF Mono', ui-monospace, 'Cascadia Code', Consolas, monospace;
+  font-size: var(--os-text-md);
+  line-height: 1.6;
+  color: #9fe8b2;
+  white-space: pre-wrap;
+}
+
+.app-terminal__cursor {
+  display: inline-block;
+  width: 8px;
+  height: 15px;
+  vertical-align: text-bottom;
+  background: #9fe8b2;
+  animation: app-cursor-blink 1.1s steps(1) infinite;
+}
+
+@keyframes app-cursor-blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-terminal__cursor {
+    animation: none;
+  }
+  .app-projects__card,
+  .app-projects__card:hover {
+    transform: none;
+  }
 }
