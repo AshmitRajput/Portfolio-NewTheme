@@ -4,13 +4,17 @@ type CtaButtonProps = {
   href: string
   label: string
   className?: string
+  /** Set this to make the browser download the linked file instead of
+   *  navigating to it — pass a string to suggest a filename (e.g. for
+   *  a resume link), or `true` to just use the file's own name. */
+  download?: boolean | string
 }
 
-function CtaButton({ href, label, className = '' }: CtaButtonProps) {
+function CtaButton({ href, label, className = '', download }: CtaButtonProps) {
   const classes = ['cta-button', className].filter(Boolean).join(' ')
 
   return (
-    <a className={classes} href={href}>
+    <a className={classes} href={href} download={download}>
       <span className="cta-button__fill" aria-hidden="true" />
       <span className="cta-button__text">{label}</span>
       <span className="cta-button__icon" aria-hidden="true">

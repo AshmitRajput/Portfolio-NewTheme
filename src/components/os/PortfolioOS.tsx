@@ -3,10 +3,13 @@ import Window from './Window'
 import type { WindowAnimationPhase } from './Window'
 import Dock from './Dock'
 import DesktopIcon from './DesktopIcon'
+import RightRail from './RightRail'
 import { APP_COMPONENTS } from './apps'
 import { APPS } from '../../data/apps'
 import { profile } from '../../data/about'
 import type { AppId, WindowState } from './types'
+import { OSSettingsProvider, useOSSettings } from '../../hooks/useOSSettings'
+import type { ThemeMode } from '../../hooks/useOSSettings'
 import './PortfolioOS.css'
 import './apps/apps.css'
 
@@ -102,14 +105,55 @@ function MenuDropdown({
   )
 }
 
+/* Phase 4 — top-bar appearance toggle. Cycles light → dark → system.
+   Icon reflects the *resolved* theme; a small "A" badge marks
+   'system' mode specifically, since resolvedTheme alone can't tell
+   you the mode is auto rather than an explicit pick. */
+function ThemeToggle({
+  theme,
+  resolvedTheme,
+  onCycle,
+}: {
+  theme: ThemeMode
+  resolvedTheme: 'light' | 'dark'
+  onCycle: () => void
+}) {
+  const label =
+    theme === 'system'
+      ? `Appearance: System (currently ${resolvedTheme})`
+      : `Appearance: ${theme === 'dark' ? 'Dark' : 'Light'}`
+
+  return (
+    <button
+      className="os-menubar__theme-toggle"
+      onClick={onCycle}
+      title={label}
+      aria-label={label}
+    >
+      <span aria-hidden="true">{resolvedTheme === 'dark' ? '☾' : '☀'}</span>
+      {theme === 'system' && (
+        <span className="os-menubar__theme-auto" aria-hidden="true">
+          A
+        </span>
+      )}
+    </button>
+  )
+}
+
 function MenuBar({
   activeTitle,
   onExit,
   menus,
+  theme,
+  resolvedTheme,
+  onCycleTheme,
 }: {
   activeTitle: string | null
   onExit: () => void
   menus: MenuDef[]
+  theme: ThemeMode
+  resolvedTheme: 'light' | 'dark'
+  onCycleTheme: () => void
 }) {
   const [now, setNow] = useState(() => new Date())
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
@@ -163,6 +207,7 @@ function MenuBar({
         ))}
       </div>
       <div className="os-menubar__right">
+        <ThemeToggle theme={theme} resolvedTheme={resolvedTheme} onCycle={onCycleTheme} />
         <time className="os-menubar__clock">{clock}</time>
       </div>
     </header>
@@ -174,6 +219,16 @@ function MenuBar({
 /* ------------------------------------------------------------------ */
 
 export default function PortfolioOS() {
+  return (
+    <OSSettingsProvider>
+      <PortfolioOSShell />
+    </OSSettingsProvider>
+  )
+}
+
+function PortfolioOSShell() {
+  const { theme, resolvedTheme, cycleTheme, showWidgets, setShowWidgets } = useOSSettings()
+
   const [windows, setWindows] = useState<WindowState[]>([])
   const [selectedIcon, setSelectedIcon] = useState<AppId | null>(null)
 
@@ -188,13 +243,35 @@ export default function PortfolioOS() {
      mount of that app's component without reloading the whole page. */
   const [reloadKeys, setReloadKeys] = useState<Partial<Record<AppId, number>>>({})
 
-  /* View-menu toggles. No right rail / mascot exists yet (Phase 4), so
-     these are wired as real, persisted-in-state toggles with a visible
-     checkmark — not dead buttons — even though nothing else reads them
-     yet. */
+  /* View-menu toggles. `showWidgets` now lives in useOSSettings (Phase
+     4) so it stays in sync with the same switch in the Settings app
+     and persists across reloads. `showResident` still has no mascot
+     to control yet, so it stays local for now. */
   const [showResident, setShowResident] = useState(true)
-  const [showWidgets, setShowWidgets] = useState(true)
   const [isFullscreen, setIsFullscreen] = useState(false)
+
+  /* ------------------------------------------------------------------
+     Phase 5 — mobile takeover mode.
+
+     Below 720px, floating/draggable/resizable windows stop making
+     sense (there's no room to drag anything anywhere, and pinch/drag
+     gestures conflict with page scroll). Real mobile OSes solve this
+     by making the open app BE the screen — one at a time, with a way
+     back to a home screen — rather than just shrinking a window to
+     fit. `isMobile` is reactive (matchMedia, not a one-time check) so
+     rotating a tablet or resizing a browser window crosses the
+     breakpoint live instead of needing a refresh.
+     ------------------------------------------------------------------ */
+  const [isMobile, setIsMobile] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia('(max-width: 720px)').matches
+  )
+
+  useEffect(() => {
+    const mql = window.matchMedia('(max-width: 720px)')
+    const onChange = () => setIsMobile(mql.matches)
+    mql.addEventListener('change', onChange)
+    return () => mql.removeEventListener('change', onChange)
+  }, [])
 
   const zCounter = useRef(10)
   const cascade = useRef(0)
@@ -447,6 +524,10 @@ export default function PortfolioOS() {
   const focusedTitle =
     APPS.find((a) => a.id === focusedId)?.title ?? null
 
+  // On mobile, focusedId doubles as "which app is taking over the
+  // screen right now" — null means the home screen (icons + dock).
+  const mobileVisibleId = isMobile ? focusedId : null
+
   const exitToLanding = () => {
     window.location.hash = ''
   }
@@ -611,8 +692,15 @@ export default function PortfolioOS() {
   }, [focusedId, windows])
 
   return (
-    <div className="os-root" ref={rootRef}>
-      <MenuBar activeTitle={focusedTitle} onExit={exitToLanding} menus={menus} />
+    <div className="os-root" data-theme={resolvedTheme} ref={rootRef}>
+      <MenuBar
+        activeTitle={focusedTitle}
+        onExit={exitToLanding}
+        menus={menus}
+        theme={theme}
+        resolvedTheme={resolvedTheme}
+        onCycleTheme={cycleTheme}
+      />
 
       <main
         className="os-desktop"
@@ -620,18 +708,24 @@ export default function PortfolioOS() {
           if (e.target === e.currentTarget) setSelectedIcon(null)
         }}
       >
-        <div className="os-desktop__icons">
-          {APPS.filter((a) => a.showOnDesktop).map((app) => (
-            <DesktopIcon
-              key={app.id}
-              icon={app.icon}
-              label={app.title}
-              isSelected={selectedIcon === app.id}
-              onSelect={() => setSelectedIcon(app.id)}
-              onOpen={() => openApp(app.id)}
-            />
-          ))}
-        </div>
+        {/* Home screen (icon grid) is hidden while an app has taken
+            over the screen on mobile — it's "underneath" the app, not
+            actually removed, so it's exactly where it was when you
+            tap Home. */}
+        {!(isMobile && mobileVisibleId) && (
+          <div className="os-desktop__icons">
+            {APPS.filter((a) => a.showOnDesktop).map((app) => (
+              <DesktopIcon
+                key={app.id}
+                icon={app.icon}
+                label={app.title}
+                isSelected={selectedIcon === app.id}
+                onSelect={() => setSelectedIcon(app.id)}
+                onOpen={() => openApp(app.id)}
+              />
+            ))}
+          </div>
+        )}
 
         {windows
           // Keep rendering a window while it's mid-minimize so the
@@ -640,7 +734,11 @@ export default function PortfolioOS() {
           .filter(
             (w) =>
               w.isOpen &&
-              (!w.isMinimized || animationPhases[w.id] === 'minimizing')
+              (!w.isMinimized || animationPhases[w.id] === 'minimizing') &&
+              // Mobile takeover: only the one app "on screen" renders
+              // at all — others stay in `windows` state (so reopening
+              // them later restores their content) but aren't mounted.
+              (!isMobile || w.id === mobileVisibleId)
           )
           .map((w) => {
             const app = APPS.find((a) => a.id === w.id)
@@ -659,6 +757,8 @@ export default function PortfolioOS() {
                 zIndex={w.zIndex}
                 isMaximized={w.isMaximized}
                 isFocused={focusedId === w.id}
+                isMobile={isMobile}
+                onBack={() => closeWindow(w.id)}
                 animationPhase={animationPhases[w.id] ?? null}
                 onClose={() => closeWindow(w.id)}
                 onMinimize={() => minimizeWindow(w.id)}
@@ -677,13 +777,19 @@ export default function PortfolioOS() {
               </Window>
             )
           })}
+
+        <RightRail openApp={openApp} visible={showWidgets} />
       </main>
 
-      <Dock
-        apps={APPS.filter((a) => a.showInDock)}
-        windows={windows}
-        onAppClick={openApp}
-      />
+      {/* Dock steps aside while an app owns the whole screen on
+          mobile — same reasoning as hiding the icon grid above. */}
+      {!(isMobile && mobileVisibleId) && (
+        <Dock
+          apps={APPS.filter((a) => a.showInDock)}
+          windows={windows}
+          onAppClick={openApp}
+        />
+      )}
     </div>
   )
 }

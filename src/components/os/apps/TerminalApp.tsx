@@ -39,6 +39,13 @@ export default function TerminalApp({ openApp }: AppProps) {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight })
   }, [lines])
 
+  // Keeps the cursor visible if a long command ever makes the prompt
+  // row wider than the window (paired with overflow-x: auto on
+  // .app-terminal__prompt-row in apps.css).
+  useEffect(() => {
+    inputRef.current?.scrollIntoView({ block: 'nearest', inline: 'end' })
+  }, [input])
+
   const print = (text: string, type: Line['type'] = 'output') =>
     setLines((prev) => [...prev, { type, text }])
 
@@ -61,6 +68,7 @@ export default function TerminalApp({ openApp }: AppProps) {
           '  skills       what I work with',
           '  resume       open my resume',
           '  contact      get in touch',
+          '  settings     appearance & widgets',
           '  open <app>   open any app by id',
           '  whoami       current user',
           '  date         current date & time',
@@ -73,6 +81,7 @@ export default function TerminalApp({ openApp }: AppProps) {
     skills: () => openAndReport('skills', 'Skills'),
     resume: () => openAndReport('resume', 'Resume'),
     contact: () => openAndReport('contact', 'Contact'),
+    settings: () => openAndReport('settings', 'Settings'),
     whoami: () => print('ashmit'),
     date: () => print(new Date().toString()),
     clear: () => setLines([]),
@@ -172,18 +181,29 @@ export default function TerminalApp({ openApp }: AppProps) {
         </pre>
         <div className="app-terminal__prompt-row">
           <span className="app-terminal__prompt">{PROMPT}</span>
-          <input
-            ref={inputRef}
-            className="app-terminal__input"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            autoFocus
-            spellCheck={false}
-            autoComplete="off"
-            aria-label="Terminal input"
-          />
-          <span className="app-terminal__cursor" aria-hidden="true" />
+          <span className="app-terminal__input-wrap">
+            {/*
+              The input is sized to exactly fit what's been typed (in
+              `ch` units, which line up 1:1 with a monospace font) so
+              the block cursor right after it always sits at the true
+              end of the text — never stranded at the far edge of the
+              row. The native line caret is hidden (caret-color:
+              transparent in CSS) so there's only ever one cursor.
+            */}
+            <input
+              ref={inputRef}
+              className="app-terminal__input"
+              style={{ width: `${Math.max(input.length, 1)}ch` }}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              autoFocus
+              spellCheck={false}
+              autoComplete="off"
+              aria-label="Terminal input"
+            />
+            <span className="app-terminal__cursor" aria-hidden="true" />
+          </span>
         </div>
       </div>
     </div>

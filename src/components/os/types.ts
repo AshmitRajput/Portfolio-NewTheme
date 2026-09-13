@@ -6,6 +6,7 @@ export type AppId =
   | 'resume'
   | 'contact'
   | 'terminal'
+  | 'settings'
 
 export type AppDefinition = {
   id: AppId

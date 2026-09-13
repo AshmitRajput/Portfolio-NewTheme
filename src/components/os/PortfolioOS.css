@@ -34,12 +34,36 @@
   --os-title: clamp(21px, 2.1vw, 28px);
   --os-display: clamp(26px, 2.8vw, 36px);
 
-  --os-glass: rgba(255, 255, 255, 0.07);
-  --os-glass-strong: rgba(30, 34, 46, 0.62);
-  --os-hairline: rgba(255, 255, 255, 0.12);
+  /* ---------------------------------------------------------------
+     Liquid-Glass material system (Phase 5 pulled forward to fix the
+     "too transparent" complaint). Every glass surface in this file
+     now reads from these five tokens instead of one-off rgba()
+     values, and each surface layers: tinted base → soft diagonal
+     highlight gradient → inset top-edge glow → hairline border →
+     drop shadow. That's what gives it "frosted" depth instead of
+     looking like plain see-through glass.
+
+     --os-glass-*   base tint + opacity per surface weight
+     --os-sheen     the soft highlight gradient overlay
+     --os-inset-hi  the inner top-edge light line
+     --------------------------------------------------------------- */
+  --os-glass: rgba(255, 255, 255, 0.12);
+  --os-glass-strong: rgba(30, 34, 46, 0.82);   /* windows */
+  --os-glass-chrome: rgba(22, 25, 35, 0.72);   /* menu bar / dropdowns / tooltip */
+  --os-glass-dock: rgba(26, 29, 40, 0.68);     /* dock */
+  --os-sheen: linear-gradient(155deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.02) 45%);
+  --os-widget-wash: linear-gradient(160deg, rgba(120, 140, 255, 0.14), rgba(80, 200, 255, 0.05) 70%);
+  --os-inset-hi: inset 0 1px 0 rgba(255, 255, 255, 0.14), inset 0 0 0 1px rgba(255, 255, 255, 0.03);
+  --os-hairline: rgba(255, 255, 255, 0.14);
+  --os-titlebar-tint: rgba(255, 255, 255, 0.04);
   --os-text: rgba(240, 243, 250, 0.92);
   --os-text-dim: rgba(240, 243, 250, 0.55);
   --os-accent: #4c8dff;
+  --os-bg-gradient:
+    radial-gradient(120% 85% at 78% 8%, rgba(93, 108, 250, 0.30), transparent 58%),
+    radial-gradient(95% 75% at 12% 88%, rgba(56, 189, 248, 0.20), transparent 60%),
+    radial-gradient(70% 55% at 50% 55%, rgba(168, 85, 247, 0.13), transparent 65%),
+    #0c0f16;
   --os-font:
     -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text',
     'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
@@ -49,12 +73,40 @@
   overflow: hidden;
   font-family: var(--os-font);
   color: var(--os-text);
-  background:
-    radial-gradient(120% 85% at 78% 8%, rgba(93, 108, 250, 0.30), transparent 58%),
-    radial-gradient(95% 75% at 12% 88%, rgba(56, 189, 248, 0.20), transparent 60%),
-    radial-gradient(70% 55% at 50% 55%, rgba(168, 85, 247, 0.13), transparent 65%),
-    #0c0f16;
+  background: var(--os-bg-gradient);
   user-select: none;
+  transition: color 0.2s ease;
+}
+
+/* ------------------------------------------------------------------
+   Phase 4 — Light theme.
+   Same token names, light-appropriate values. Every rule below in
+   this file reads these custom properties rather than hardcoded
+   colors, so switching data-theme repaints the whole OS for free.
+   ------------------------------------------------------------------ */
+
+.os-root[data-theme='light'] {
+  /* Retuned: the first pass sat on a near-white #eef1f6 canvas with
+     weak color blobs, which reads as flat and glary rather than a
+     tinted glass surface. Darkened the base a notch and turned the
+     color blobs up so there's something for "glass" to actually
+     look like it's made of. */
+  --os-glass: rgba(20, 24, 34, 0.07);
+  --os-glass-strong: rgba(255, 255, 255, 0.72);
+  --os-glass-chrome: rgba(255, 255, 255, 0.62);
+  --os-glass-dock: rgba(255, 255, 255, 0.6);
+  --os-sheen: linear-gradient(155deg, rgba(255, 255, 255, 0.45), rgba(255, 255, 255, 0.04) 45%);
+  --os-widget-wash: linear-gradient(160deg, rgba(93, 108, 250, 0.10), rgba(56, 189, 248, 0.05) 70%);
+  --os-inset-hi: inset 0 1px 0 rgba(255, 255, 255, 0.65), inset 0 0 0 1px rgba(20, 24, 34, 0.05);
+  --os-hairline: rgba(20, 24, 34, 0.14);
+  --os-titlebar-tint: rgba(20, 24, 34, 0.04);
+  --os-text: rgba(20, 23, 33, 0.92);
+  --os-text-dim: rgba(20, 23, 33, 0.58);
+  --os-bg-gradient:
+    radial-gradient(130% 90% at 80% 6%, rgba(93, 108, 250, 0.30), transparent 60%),
+    radial-gradient(100% 80% at 10% 90%, rgba(56, 189, 248, 0.24), transparent 62%),
+    radial-gradient(75% 60% at 50% 50%, rgba(168, 85, 247, 0.18), transparent 68%),
+    #d9dee8;
 }
 
 .os-root *,
@@ -94,10 +146,11 @@
   justify-content: space-between;
   padding: 0 16px;
   font-size: var(--os-text-sm);
-  background: rgba(16, 18, 26, 0.55);
-  backdrop-filter: blur(24px) saturate(1.4);
-  -webkit-backdrop-filter: blur(24px) saturate(1.4);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  background: var(--os-sheen), var(--os-glass-chrome);
+  backdrop-filter: blur(34px) saturate(1.8);
+  -webkit-backdrop-filter: blur(34px) saturate(1.8);
+  border-bottom: 1px solid var(--os-hairline);
+  box-shadow: var(--os-inset-hi);
 }
 
 .os-menubar__left {
@@ -150,11 +203,11 @@
   min-width: 220px;
   padding: 6px;
   border-radius: 12px;
-  background: rgba(24, 27, 38, 0.78);
-  backdrop-filter: blur(26px) saturate(1.5);
-  -webkit-backdrop-filter: blur(26px) saturate(1.5);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.45);
+  background: var(--os-sheen), var(--os-glass-chrome);
+  backdrop-filter: blur(36px) saturate(1.9);
+  -webkit-backdrop-filter: blur(36px) saturate(1.9);
+  border: 1px solid var(--os-hairline);
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.45), var(--os-inset-hi);
   animation: os-window-in 0.14s cubic-bezier(0.2, 0.8, 0.3, 1);
 }
 
@@ -247,7 +300,7 @@
 }
 
 .os-desktop-icon:hover {
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--os-glass);
 }
 
 .os-desktop-icon:active {
@@ -293,22 +346,24 @@
   flex-direction: column;
   border-radius: 14px;
   overflow: hidden;
-  background: var(--os-glass-strong);
-  backdrop-filter: blur(28px) saturate(1.5);
-  -webkit-backdrop-filter: blur(28px) saturate(1.5);
-  border: 1px solid rgba(255, 255, 255, 0.09);
+  background: var(--os-sheen), var(--os-glass-strong);
+  backdrop-filter: blur(40px) saturate(1.9);
+  -webkit-backdrop-filter: blur(40px) saturate(1.9);
+  border: 1px solid var(--os-hairline);
   box-shadow:
     0 24px 60px rgba(0, 0, 0, 0.45),
-    0 4px 14px rgba(0, 0, 0, 0.3);
+    0 4px 14px rgba(0, 0, 0, 0.3),
+    var(--os-inset-hi);
   animation: os-window-in 0.2s cubic-bezier(0.2, 0.8, 0.3, 1);
-  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+  transition: box-shadow 0.2s ease, border-color 0.2s ease, background 0.2s ease;
 }
 
 .os-window--focused {
   border-color: var(--os-hairline);
   box-shadow:
     0 32px 80px rgba(0, 0, 0, 0.55),
-    0 6px 18px rgba(0, 0, 0, 0.35);
+    0 6px 18px rgba(0, 0, 0, 0.35),
+    var(--os-inset-hi);
 }
 
 .os-window--maximized {
@@ -319,6 +374,43 @@
   width: auto;
   height: auto;
   transition: left 0.18s ease, right 0.18s ease, top 0.18s ease, bottom 0.18s ease;
+}
+
+/* Phase 5 — mobile takeover. Edge-to-edge, no rounded corners, no
+   dock-height gap reserved at the bottom (the Dock is unmounted
+   entirely while an app owns the screen — see PortfolioOS.tsx). */
+.os-window--mobile {
+  left: 0;
+  right: 0;
+  top: var(--os-menubar-h);
+  bottom: 0;
+  width: auto;
+  height: auto;
+  border-radius: 0;
+  border-width: 0;
+  transition: none;
+}
+
+.os-window__back {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px 4px 4px;
+  margin-left: -4px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--os-accent);
+}
+
+.os-window__back:active {
+  background: var(--os-glass);
+}
+
+.os-window__back-glyph {
+  width: 9px;
+  height: 9px;
+  stroke: var(--os-accent);
 }
 
 @keyframes os-window-in {
@@ -382,8 +474,8 @@
   padding: 0 14px;
   cursor: grab;
   touch-action: none;
-  background: rgba(255, 255, 255, 0.04);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  background: var(--os-titlebar-tint, rgba(255, 255, 255, 0.04));
+  border-bottom: 1px solid var(--os-hairline);
 }
 
 .os-window__titlebar:active {
@@ -562,7 +654,7 @@
 /* Dim the lights on unfocused windows, like macOS */
 
 .os-root .os-window:not(.os-window--focused) .os-traffic__btn {
-  background: rgba(255, 255, 255, 0.22);
+  background: var(--os-hairline);
 }
 
 .os-root .os-window:not(.os-window--focused) .os-traffic__glyph {
@@ -590,11 +682,11 @@
   height: var(--os-dock-height);
   padding: 0 var(--os-dock-padding-x);
   border-radius: 26px;
-  background: rgba(24, 27, 38, 0.55);
-  backdrop-filter: blur(26px) saturate(1.5);
-  -webkit-backdrop-filter: blur(26px) saturate(1.5);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.45);
+  background: var(--os-sheen), var(--os-glass-dock);
+  backdrop-filter: blur(38px) saturate(1.9);
+  -webkit-backdrop-filter: blur(38px) saturate(1.9);
+  border: 1px solid var(--os-hairline);
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.45), var(--os-inset-hi);
 }
 
 .os-dock__item {
@@ -606,17 +698,18 @@
   height: 100%;
   padding: 8px 8px 10px;
   border-radius: 16px;
-  transition: transform 0.16s cubic-bezier(0.2, 0.8, 0.3, 1), background 0.16s ease;
+  transform-origin: 50% 100%;
+  /* The transform itself is now driven by Dock.tsx (pointer-distance
+     magnification) via inline style — this transition is what makes
+     each per-pointer-move change animate smoothly instead of
+     snapping. Background hover stays a plain CSS rule. */
+  transition: transform 0.1s cubic-bezier(0.2, 0.8, 0.3, 1), background 0.16s ease;
 }
 
 .os-dock__item:hover {
-  transform: translateY(-10px) scale(1.12);
   background: rgba(255, 255, 255, 0.08);
 }
 
-.os-dock__item:active {
-  transform: translateY(-4px) scale(1.04);
-}
 
 .os-dock__icon {
   display: grid;
@@ -625,8 +718,8 @@
   height: var(--os-dock-icon-size);
   font-size: calc(var(--os-dock-icon-size) * 0.56);
   border-radius: 16px;
-  background: rgba(255, 255, 255, 0.07);
-  border: 1px solid rgba(255, 255, 255, 0.09);
+  background: var(--os-glass);
+  border: 1px solid var(--os-hairline);
 }
 
 .os-dock__dot {
@@ -650,10 +743,11 @@
   border-radius: 8px;
   font-size: var(--os-text-xs);
   white-space: nowrap;
-  background: rgba(20, 23, 32, 0.85);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: var(--os-glass-chrome);
+  border: 1px solid var(--os-hairline);
+  backdrop-filter: blur(20px) saturate(1.6);
+  -webkit-backdrop-filter: blur(20px) saturate(1.6);
+  box-shadow: var(--os-inset-hi);
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.15s ease;
@@ -661,6 +755,251 @@
 
 .os-dock__item:hover .os-dock__tooltip {
   opacity: 1;
+}
+
+/* ------------------------------------------------------------------
+   Menu bar — theme toggle (Phase 4)
+   ------------------------------------------------------------------ */
+
+.os-menubar__right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.os-root .os-menubar__theme-toggle {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  font-size: 15px;
+  color: var(--os-text-dim);
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.os-root .os-menubar__theme-toggle:hover {
+  background: var(--os-glass);
+  color: var(--os-text);
+}
+
+.os-menubar__theme-auto {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  font-size: 8px;
+  line-height: 12px;
+  text-align: center;
+  background: var(--os-accent);
+  color: #fff;
+}
+
+/* ------------------------------------------------------------------
+   Right rail + widgets (Phase 4)
+   ------------------------------------------------------------------ */
+
+.os-rail {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  bottom: 120px;
+  width: 268px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  overflow-y: auto;
+  z-index: 10; /* above desktop icons, below open windows/dock */
+}
+
+.os-widget {
+  flex-shrink: 0;
+  padding: 16px;
+  border-radius: 16px;
+  /* Previously relied only on backdrop-filter picking up whatever
+     color happens to sit behind the rail — at the screen's top-right
+     corner that can be mostly flat background, which is why this
+     read as plain grey. `--os-widget-wash` bakes a color tint
+     directly into the surface so it looks like tinted glass
+     regardless of what's actually behind it. */
+  background: var(--os-widget-wash), var(--os-sheen), var(--os-glass-chrome);
+  backdrop-filter: blur(30px) saturate(1.9);
+  -webkit-backdrop-filter: blur(30px) saturate(1.9);
+  border: 1px solid var(--os-hairline);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3), var(--os-inset-hi);
+}
+
+.os-widget__title {
+  margin: 0 0 10px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--os-text-dim);
+}
+
+.os-widget__title--cal {
+  margin: 0;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 13px;
+  color: var(--os-text);
+}
+
+/* LinkedIn */
+
+.os-widget__linkedin-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.os-root .os-widget__linkedin-post {
+  display: block;
+  padding: 8px;
+  margin: -8px;
+  border-radius: 10px;
+  text-decoration: none;
+  color: inherit;
+  transition: background 0.12s ease;
+}
+
+.os-root .os-widget__linkedin-post:hover {
+  background: var(--os-glass);
+}
+
+.os-widget__linkedin-text {
+  display: block;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--os-text);
+}
+
+.os-widget__linkedin-date {
+  display: block;
+  margin-top: 3px;
+  font-size: 11.5px;
+  color: var(--os-text-dim);
+}
+
+/* Tips */
+
+.os-widget__tip-text {
+  margin: 0 0 10px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--os-text);
+}
+
+.os-root .os-widget__open {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--os-accent);
+}
+
+.os-root .os-widget__open:hover {
+  text-decoration: underline;
+}
+
+/* Shortcuts */
+
+.os-widget__shortcuts-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.os-root .os-widget__shortcut {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 10px;
+  border-radius: 10px;
+  font-size: 12.5px;
+  background: var(--os-glass);
+  border: 1px solid var(--os-hairline);
+  transition: background 0.12s ease;
+}
+
+.os-root .os-widget__shortcut:hover {
+  background: rgba(76, 141, 255, 0.18);
+}
+
+.os-widget__shortcut-icon {
+  font-size: 15px;
+}
+
+.os-widget__shortcut-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Calendar */
+
+.os-widget__cal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.os-root .os-widget__cal-nav {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  color: var(--os-text-dim);
+}
+
+.os-root .os-widget__cal-nav:hover {
+  background: var(--os-glass);
+  color: var(--os-text);
+}
+
+.os-widget__cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  text-align: center;
+}
+
+.os-widget__cal-weekday {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--os-text-dim);
+  padding-bottom: 4px;
+}
+
+.os-widget__cal-day {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  font-size: 12px;
+  color: var(--os-text);
+}
+
+.os-widget__cal-day--today {
+  background: var(--os-accent);
+  color: #fff;
+  font-weight: 600;
+}
+
+/* Below ~1100px the rail would collide with default window positions —
+   hide it rather than let it overlap unreadably; Settings/View menu
+   can still be used to hide it explicitly above that width. */
+@media (max-width: 1100px) {
+  .os-rail {
+    display: none;
+  }
 }
 
 /* ------------------------------------------------------------------
@@ -695,18 +1034,16 @@
     --os-dock-height: 72px;
   }
 
-  .os-window {
-    left: 8px !important;
-    right: 8px !important;
-    top: calc(var(--os-menubar-h) + 8px) !important;
-    bottom: calc(var(--os-dock-height) + 20px) !important;
-    width: auto !important;
-    height: auto !important;
-  }
   .os-desktop__icons {
     grid-template-rows: repeat(2, auto);
   }
+
+  /* Real full-screen takeover now happens via the .os-window--mobile
+     class (set from isMobile in PortfolioOS.tsx/Window.tsx) rather
+     than forcing every window's box here — but resize handles stay
+     hidden as a defense-in-depth fallback for any window that
+     somehow renders without that class at this width. */
   .os-window__edge {
-    display: none; /* windows are forced full-size on small screens */
+    display: none;
   }
 }
