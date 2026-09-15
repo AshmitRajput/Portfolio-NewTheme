@@ -22,15 +22,26 @@ type OSSettingsValue = {
   cycleTheme: () => void
   showWidgets: boolean
   setShowWidgets: (value: boolean | ((prev: boolean) => boolean)) => void
+  /** Settings > Windows > "Remember window positions". */
+  rememberWindowPositions: boolean
+  setRememberWindowPositions: (value: boolean | ((prev: boolean) => boolean)) => void
 }
 
 const STORAGE_KEY = 'ashmit-os-settings'
 const THEME_ORDER: ThemeMode[] = ['light', 'dark', 'system']
 
-type StoredSettings = { theme: ThemeMode; showWidgets: boolean }
+type StoredSettings = {
+  theme: ThemeMode
+  showWidgets: boolean
+  rememberWindowPositions: boolean
+}
 
 function loadStored(): StoredSettings {
-  const fallback: StoredSettings = { theme: 'system', showWidgets: true }
+  const fallback: StoredSettings = {
+    theme: 'system',
+    showWidgets: true,
+    rememberWindowPositions: true,
+  }
   if (typeof window === 'undefined') return fallback
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY)
@@ -42,7 +53,11 @@ function loadStored(): StoredSettings {
         : fallback.theme
     const showWidgets =
       typeof parsed.showWidgets === 'boolean' ? parsed.showWidgets : fallback.showWidgets
-    return { theme, showWidgets }
+    const rememberWindowPositions =
+      typeof parsed.rememberWindowPositions === 'boolean'
+        ? parsed.rememberWindowPositions
+        : fallback.rememberWindowPositions
+    return { theme, showWidgets, rememberWindowPositions }
   } catch {
     return fallback
   }
@@ -54,6 +69,9 @@ export function OSSettingsProvider({ children }: { children: ReactNode }) {
   const initial = useMemo(loadStored, [])
   const [theme, setTheme] = useState<ThemeMode>(initial.theme)
   const [showWidgets, setShowWidgets] = useState<boolean>(initial.showWidgets)
+  const [rememberWindowPositions, setRememberWindowPositions] = useState<boolean>(
+    initial.rememberWindowPositions
+  )
   const [systemPrefersDark, setSystemPrefersDark] = useState(() =>
     typeof window !== 'undefined'
       ? window.matchMedia('(prefers-color-scheme: dark)').matches
@@ -71,11 +89,14 @@ export function OSSettingsProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ theme, showWidgets }))
+      window.localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({ theme, showWidgets, rememberWindowPositions })
+      )
     } catch {
       // Storage can be unavailable (private mode, quota) — fail quietly.
     }
-  }, [theme, showWidgets])
+  }, [theme, showWidgets, rememberWindowPositions])
 
   const resolvedTheme: 'light' | 'dark' =
     theme === 'system' ? (systemPrefersDark ? 'dark' : 'light') : theme
@@ -84,8 +105,17 @@ export function OSSettingsProvider({ children }: { children: ReactNode }) {
     setTheme((prev) => THEME_ORDER[(THEME_ORDER.indexOf(prev) + 1) % THEME_ORDER.length])
 
   const value = useMemo<OSSettingsValue>(
-    () => ({ theme, resolvedTheme, setTheme, cycleTheme, showWidgets, setShowWidgets }),
-    [theme, resolvedTheme, showWidgets]
+    () => ({
+      theme,
+      resolvedTheme,
+      setTheme,
+      cycleTheme,
+      showWidgets,
+      setShowWidgets,
+      rememberWindowPositions,
+      setRememberWindowPositions,
+    }),
+    [theme, resolvedTheme, showWidgets, rememberWindowPositions]
   )
 
   return <OSSettingsContext.Provider value={value}>{children}</OSSettingsContext.Provider>

@@ -4,12 +4,18 @@ import type { WindowAnimationPhase } from './Window'
 import Dock from './Dock'
 import DesktopIcon from './DesktopIcon'
 import RightRail from './RightRail'
+import ErrorBoundary from './ErrorBoundary'
 import { APP_COMPONENTS } from './apps'
 import { APPS } from '../../data/apps'
 import { profile } from '../../data/about'
 import type { AppId, WindowState } from './types'
 import { OSSettingsProvider, useOSSettings } from '../../hooks/useOSSettings'
 import type { ThemeMode } from '../../hooks/useOSSettings'
+import { loadWindowGeometry, saveWindowGeometry } from '../../hooks/windowGeometry'
+import {
+  initDesktopBackground,
+  recompositeDesktopBackground,
+} from '../../lib/glass/desktopBackground'
 import './PortfolioOS.css'
 import './apps/apps.css'
 
@@ -218,16 +224,66 @@ function MenuBar({
 /* Portfolio OS — Window Manager (Phase 2) + Menu system (Phase 3)     */
 /* ------------------------------------------------------------------ */
 
+/** Last-resort fallback if something crashes badly enough to escape
+ *  every inner boundary (Dock, each app window) below. Plain inline
+ *  styles on purpose — if things are broken enough to reach here,
+ *  the OS's own CSS variables might not be trustworthy either. */
+function OSCrashScreen() {
+  return (
+    <div
+      style={{
+        position: 'fixed',
+        inset: 0,
+        display: 'grid',
+        placeItems: 'center',
+        background: '#0c0f16',
+        color: 'rgba(240,243,250,0.92)',
+        fontFamily:
+          '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+        textAlign: 'center',
+        padding: 24,
+      }}
+    >
+      <div style={{ maxWidth: 360 }}>
+        <p style={{ fontSize: 15, fontWeight: 600, marginBottom: 8 }}>
+          Something went wrong.
+        </p>
+        <p style={{ fontSize: 13.5, color: 'rgba(240,243,250,0.6)', marginBottom: 20 }}>
+          RI/OS hit an unexpected error. Reloading the page should fix it.
+        </p>
+        <button
+          onClick={() => window.location.reload()}
+          style={{
+            padding: '9px 18px',
+            borderRadius: 8,
+            border: 'none',
+            background: '#b8935a',
+            color: '#fff',
+            fontSize: 13.5,
+            fontWeight: 500,
+            cursor: 'pointer',
+          }}
+        >
+          Reload
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export default function PortfolioOS() {
   return (
-    <OSSettingsProvider>
-      <PortfolioOSShell />
-    </OSSettingsProvider>
+    <ErrorBoundary fallback={<OSCrashScreen />}>
+      <OSSettingsProvider>
+        <PortfolioOSShell />
+      </OSSettingsProvider>
+    </ErrorBoundary>
   )
 }
 
 function PortfolioOSShell() {
-  const { theme, resolvedTheme, cycleTheme, showWidgets, setShowWidgets } = useOSSettings()
+  const { theme, resolvedTheme, cycleTheme, showWidgets, setShowWidgets, rememberWindowPositions } =
+    useOSSettings()
 
   const [windows, setWindows] = useState<WindowState[]>([])
   const [selectedIcon, setSelectedIcon] = useState<AppId | null>(null)
@@ -278,6 +334,48 @@ function PortfolioOSShell() {
   const animationTimers = useRef<Partial<Record<AppId, number>>>({})
   const rootRef = useRef<HTMLDivElement>(null)
 
+  /* ------------------------------------------------------------------
+     WebGL glass — shared desktop-background compositor (see
+     lib/glass/desktopBackground.ts). One offscreen canvas, mirroring
+     .os-root's own wallpaper + theme scrim, that every open window's
+     GlassCanvas crops its own on-screen rect out of. Initialized once
+     here; every window instance just reads from it.
+     ------------------------------------------------------------------ */
+  useEffect(() => {
+    const rootEl = rootRef.current
+    if (!rootEl) return
+    // Read the wallpaper path from the same CSS custom property
+    // .os-root's background-image uses, rather than hardcoding it a
+    // second time here.
+    const raw = getComputedStyle(rootEl).getPropertyValue('--os-wallpaper').trim()
+    const match = raw.match(/url\(["']?(.*?)["']?\)/)
+    const wallpaperUrl = match ? match[1] : '/deskbg.png'
+    initDesktopBackground(wallpaperUrl, resolvedTheme, window.innerWidth, window.innerHeight)
+    // Wallpaper URL is static for the app's lifetime — only need this once.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Theme changes recolor the scrim baked into the composite.
+  useEffect(() => {
+    recompositeDesktopBackground(resolvedTheme, window.innerWidth, window.innerHeight)
+  }, [resolvedTheme])
+
+  // Viewport resize changes the cover-fit crop of the wallpaper.
+  useEffect(() => {
+    let raf = 0
+    const onResize = () => {
+      cancelAnimationFrame(raf)
+      raf = requestAnimationFrame(() => {
+        recompositeDesktopBackground(resolvedTheme, window.innerWidth, window.innerHeight)
+      })
+    }
+    window.addEventListener('resize', onResize)
+    return () => {
+      window.removeEventListener('resize', onResize)
+      cancelAnimationFrame(raf)
+    }
+  }, [resolvedTheme])
+
   const nextZ = () => ++zCounter.current
 
   const clearAnimationTimer = (id: AppId) => {
@@ -294,6 +392,20 @@ function PortfolioOSShell() {
 
   /* ---------------- Core window actions ---------------- */
 
+  // Settings > Windows > "Remember window positions" — persists on
+  // every move/resize/maximize-toggle while the setting is on. Closing
+  // a window intentionally leaves its last geometry in storage, so
+  // reopening it later still restores where it was.
+  useEffect(() => {
+    if (!rememberWindowPositions) return
+    const all = loadWindowGeometry()
+    for (const w of windows) {
+      if (!w.isOpen) continue
+      all[w.id] = { x: w.x, y: w.y, width: w.width, height: w.height, isMaximized: w.isMaximized }
+    }
+    saveWindowGeometry(all)
+  }, [windows, rememberWindowPositions])
+
   const openWindow = (id: AppId) => {
     setSelectedIcon(null)
     setWindows((prev) => {
@@ -303,9 +415,13 @@ function PortfolioOSShell() {
       const minWidth = app.minWidth ?? MIN_WINDOW_WIDTH
       const minHeight = app.minHeight ?? MIN_WINDOW_HEIGHT
 
+      // Settings > Windows > "Remember window positions": reopen this
+      // app exactly where it was left, instead of the usual cascade.
+      const saved = rememberWindowPositions ? loadWindowGeometry()[id] : undefined
+
       const offset = (cascade.current++ % 6) * 32
-      const rawWidth = app.defaultSize.width * DEFAULT_SIZE_SCALE
-      const rawHeight = app.defaultSize.height * DEFAULT_SIZE_SCALE
+      const rawWidth = saved?.width ?? app.defaultSize.width * DEFAULT_SIZE_SCALE
+      const rawHeight = saved?.height ?? app.defaultSize.height * DEFAULT_SIZE_SCALE
 
       // Never open smaller than the app's own minimum, and never larger
       // than the viewport allows.
@@ -317,8 +433,12 @@ function PortfolioOSShell() {
         Math.max(rawHeight, minHeight),
         window.innerHeight - 140
       )
-      const x = Math.max(24, (window.innerWidth - width) / 2 + offset)
-      const y = Math.max(56, (window.innerHeight - height) / 2.4 + offset)
+      const x = saved
+        ? Math.min(Math.max(saved.x, 8), Math.max(8, window.innerWidth - width - 8))
+        : Math.max(24, (window.innerWidth - width) / 2 + offset)
+      const y = saved
+        ? Math.min(Math.max(saved.y, 48), Math.max(48, window.innerHeight - height - 8))
+        : Math.max(56, (window.innerHeight - height) / 2.4 + offset)
 
       return [
         ...prev,
@@ -332,7 +452,7 @@ function PortfolioOSShell() {
           minHeight,
           isOpen: true,
           isMinimized: false,
-          isMaximized: false,
+          isMaximized: saved?.isMaximized ?? false,
           zIndex: nextZ(),
         },
       ]
@@ -693,6 +813,28 @@ function PortfolioOSShell() {
 
   return (
     <div className="os-root" data-theme={resolvedTheme} ref={rootRef}>
+      {/* Zero-size, invisible — just registers the filter definition
+          referenced by `filter: url(#os-glass-distort)` on the Dock
+          tray and window titlebars (see PortfolioOS.css). A single
+          shared def, not one per surface. */}
+      <svg width="0" height="0" style={{ position: 'absolute' }} aria-hidden="true">
+        <filter id="os-glass-distort">
+          <feTurbulence
+            type="fractalNoise"
+            baseFrequency="0.012 0.02"
+            numOctaves={2}
+            seed={7}
+            result="noise"
+          />
+          <feDisplacementMap
+            in="SourceGraphic"
+            in2="noise"
+            scale="6"
+            xChannelSelector="R"
+            yChannelSelector="G"
+          />
+        </filter>
+      </svg>
       <MenuBar
         activeTitle={focusedTitle}
         onExit={exitToLanding}
@@ -720,6 +862,7 @@ function PortfolioOSShell() {
                 icon={app.icon}
                 label={app.title}
                 isSelected={selectedIcon === app.id}
+                isMobile={isMobile}
                 onSelect={() => setSelectedIcon(app.id)}
                 onOpen={() => openApp(app.id)}
               />
@@ -758,6 +901,7 @@ function PortfolioOSShell() {
                 isMaximized={w.isMaximized}
                 isFocused={focusedId === w.id}
                 isMobile={isMobile}
+                resolvedTheme={resolvedTheme}
                 onBack={() => closeWindow(w.id)}
                 animationPhase={animationPhases[w.id] ?? null}
                 onClose={() => closeWindow(w.id)}
@@ -773,7 +917,21 @@ function PortfolioOSShell() {
               >
                 {/* keyed by reloadKeys so View > Reload content / Cmd+R
                     forces a fresh mount without a full page reload */}
-                <AppComponent key={reloadKeys[w.id] ?? 0} openApp={openApp} />
+                <ErrorBoundary
+                  fallback={(_error, reset) => (
+                    <div className="app app-crash">
+                      <p className="app-crash__title">{app.title} hit a snag.</p>
+                      <p className="app-crash__body">
+                        Something in this window broke — the rest of RI/OS is fine.
+                      </p>
+                      <button className="app-crash__retry" onClick={reset}>
+                        Try again
+                      </button>
+                    </div>
+                  )}
+                >
+                  <AppComponent key={reloadKeys[w.id] ?? 0} openApp={openApp} />
+                </ErrorBoundary>
               </Window>
             )
           })}
@@ -784,11 +942,13 @@ function PortfolioOSShell() {
       {/* Dock steps aside while an app owns the whole screen on
           mobile — same reasoning as hiding the icon grid above. */}
       {!(isMobile && mobileVisibleId) && (
-        <Dock
-          apps={APPS.filter((a) => a.showInDock)}
-          windows={windows}
-          onAppClick={openApp}
-        />
+        <ErrorBoundary fallback={null}>
+          <Dock
+            apps={APPS.filter((a) => a.showInDock)}
+            windows={windows}
+            onAppClick={openApp}
+          />
+        </ErrorBoundary>
       )}
     </div>
   )

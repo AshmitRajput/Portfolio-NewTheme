@@ -13,8 +13,18 @@ export default function LinkedInWidget() {
               target="_blank"
               rel="noreferrer"
             >
-              <span className="os-widget__linkedin-text">{post.title}</span>
-              <span className="os-widget__linkedin-date">{post.date}</span>
+              {post.image && (
+                <img
+                  className="os-widget__linkedin-thumb"
+                  src={post.image}
+                  alt=""
+                  aria-hidden="true"
+                />
+              )}
+              <span className="os-widget__linkedin-body">
+                <span className="os-widget__linkedin-text">{post.title}</span>
+                <span className="os-widget__linkedin-date">{post.date}</span>
+              </span>
             </a>
           </li>
         ))}

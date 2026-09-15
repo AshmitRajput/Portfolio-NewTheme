@@ -8,13 +8,20 @@ const THEME_OPTIONS: { value: ThemeMode; label: string; hint: string }[] = [
 ]
 
 /**
- * Phase 4 MVP. Appearance and Widgets are real and persisted
- * (useOSSettings → localStorage). Desktop/Dock/Windows/Accessibility
- * sections from the plan aren't built yet — deliberately left out
- * rather than shipped as dead controls (Rule 5).
+ * Phase 4/5. Appearance, Widgets, and Windows are real and persisted
+ * (useOSSettings → localStorage). Desktop/Dock/Accessibility sections
+ * from the plan aren't built yet — deliberately left out rather than
+ * shipped as dead controls (Rule 5).
  */
 export default function SettingsApp() {
-  const { theme, setTheme, showWidgets, setShowWidgets } = useOSSettings()
+  const {
+    theme,
+    setTheme,
+    showWidgets,
+    setShowWidgets,
+    rememberWindowPositions,
+    setRememberWindowPositions,
+  } = useOSSettings()
 
   return (
     <div className="app app-settings">
@@ -60,8 +67,28 @@ export default function SettingsApp() {
         </button>
       </label>
 
+      <h2 className="app__section">Windows</h2>
+      <label className="app-settings__toggle-row">
+        <span>
+          Remember window positions
+          <span className="app-settings__option-hint app-settings__option-hint--block">
+            Reopen an app exactly where you left it, instead of re-centering it
+          </span>
+        </span>
+        <button
+          className={`app-settings__switch${
+            rememberWindowPositions ? ' app-settings__switch--on' : ''
+          }`}
+          role="switch"
+          aria-checked={rememberWindowPositions}
+          onClick={() => setRememberWindowPositions((v) => !v)}
+        >
+          <span className="app-settings__switch-knob" />
+        </button>
+      </label>
+
       <p className="app__muted app-settings__note">
-        Desktop, Dock, Windows, and Accessibility settings are coming in a later pass.
+        Desktop, Dock, and Accessibility settings are coming in a later pass.
       </p>
     </div>
   )

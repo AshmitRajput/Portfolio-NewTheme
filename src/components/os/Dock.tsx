@@ -1,4 +1,3 @@
-import { useRef, useState } from 'react'
 import type { PointerEvent as ReactPointerEvent } from 'react'
 import type { AppDefinition, AppId, WindowState } from './types'
 
@@ -9,97 +8,51 @@ type DockProps = {
 }
 
 /* ------------------------------------------------------------------
-   Phase 5 — Dock magnification.
+   Dock magnification — deliberately simple.
 
-   Real macOS magnification responds to cursor proximity across the
-   WHOLE dock (neighbors bulge too), which needs each icon's live
-   position + the pointer's X — hence JS, not a CSS :hover rule.
-
-   IMPORTANT: icon DOM nodes are tracked in a plain useRef, not
-   useState. A ref callback (`ref={el => ...}`) is a new function
-   every render, so React re-fires it on every render regardless —
-   if that callback called setState, it would trigger another
-   render → another new callback → another setState → infinite loop
-   (this crashed the app to a blank screen in the previous version).
-   Mutating a ref doesn't trigger a re-render, so the loop can't start.
+   An earlier version computed distance-based magnification in JS so
+   neighboring icons would bulge too (real macOS behavior, and what
+   the Phase 5 plan describes). That was reverted on request: only
+   the icon actually under the pointer should scale, nothing next to
+   it, and it should return to normal the instant the pointer leaves
+   — which is exactly what a plain CSS :hover rule gives for free,
+   with no JS state, no ref-tracking, and none of the risk that class
+   of code carried last time (the black-screen crash was a bug in
+   this exact file's old ref-callback logic).
    ------------------------------------------------------------------ */
 
-const BASE_SCALE = 1
-const MAX_SCALE = 1.55
-const MAGNIFY_RADIUS = 110 // px — beyond this an icon is back to base scale
-
 export default function Dock({ apps, windows, onAppClick }: DockProps) {
-  const itemRefs = useRef<Record<string, HTMLButtonElement | null>>({})
-  const [scales, setScales] = useState<Record<string, number>>({})
-
-  // Respect the OS-level reduce-motion preference: skip magnification
-  // entirely rather than fight it with `transform: none !important`.
-  const prefersReducedMotion =
-    typeof window !== 'undefined' &&
-    window.matchMedia('(prefers-reduced-motion: reduce)').matches
-
   const isOpen = (id: AppId) => windows.some((w) => w.id === id && w.isOpen)
 
-  const updateScales = (pointerX: number) => {
-    const next: Record<string, number> = {}
-    for (const app of apps) {
-      const el = itemRefs.current[app.id]
-      if (!el) continue
-      const rect = el.getBoundingClientRect()
-      const center = rect.left + rect.width / 2
-      const distance = Math.abs(pointerX - center)
-      const falloff = Math.max(0, 1 - distance / MAGNIFY_RADIUS)
-      next[app.id] = BASE_SCALE + (MAX_SCALE - BASE_SCALE) * falloff
-    }
-    setScales(next)
+  // Drives the specular-highlight pseudo-element in PortfolioOS.css
+  // (.os-dock__tray::after). A plain imperative style mutation, not
+  // React state — it can't cause a re-render loop.
+  const handleTrayPointerMove = (e: ReactPointerEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect()
+    e.currentTarget.style.setProperty('--glass-x', `${e.clientX - rect.left}px`)
+    e.currentTarget.style.setProperty('--glass-y', `${e.clientY - rect.top}px`)
   }
-
-  const handlePointerMove = (e: ReactPointerEvent<HTMLDivElement>) => {
-    if (prefersReducedMotion) return
-    updateScales(e.clientX)
-  }
-
-  const handlePointerLeave = () => setScales({})
 
   return (
     <nav className="os-dock" aria-label="Dock">
-      <div
-        className="os-dock__tray"
-        onPointerMove={handlePointerMove}
-        onPointerLeave={handlePointerLeave}
-      >
-        {apps.map((app) => {
-          const scale = scales[app.id] ?? BASE_SCALE
-          // Lift the icon as it grows so it magnifies from the Dock's
-          // bottom edge (like macOS) instead of from its own center.
-          const lift = (scale - BASE_SCALE) * 24
-
-          return (
-            <button
-              key={app.id}
-              ref={(el) => {
-                itemRefs.current[app.id] = el
-              }}
-              className="os-dock__item"
-              style={
-                prefersReducedMotion
-                  ? undefined
-                  : { transform: `translateY(-${lift}px) scale(${scale})` }
-              }
-              onClick={() => onAppClick(app.id)}
-              aria-label={`Open ${app.title}`}
-            >
-              <span className="os-dock__icon" aria-hidden="true">
-                {app.icon}
-              </span>
-              <span className="os-dock__tooltip">{app.title}</span>
-              <span
-                className={`os-dock__dot${isOpen(app.id) ? ' os-dock__dot--active' : ''}`}
-                aria-hidden="true"
-              />
-            </button>
-          )
-        })}
+      <div className="os-dock__tray" onPointerMove={handleTrayPointerMove}>
+        {apps.map((app) => (
+          <button
+            key={app.id}
+            className="os-dock__item"
+            onClick={() => onAppClick(app.id)}
+            aria-label={`Open ${app.title}`}
+          >
+            <span className="os-dock__icon" aria-hidden="true">
+              {app.icon}
+            </span>
+            <span className="os-dock__tooltip">{app.title}</span>
+            <span
+              className={`os-dock__dot${isOpen(app.id) ? ' os-dock__dot--active' : ''}`}
+              aria-hidden="true"
+            />
+          </button>
+        ))}
       </div>
     </nav>
   )

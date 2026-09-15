@@ -1,5 +1,6 @@
 import { useRef } from 'react'
 import type { PointerEvent as ReactPointerEvent, ReactNode } from 'react'
+import GlassCanvas from './GlassCanvas'
 
 const MENUBAR_HEIGHT = 38
 const EDGE_MARGIN = 80
@@ -29,6 +30,9 @@ type WindowProps = {
    *  plan's "Mobile: app opens full screen" behavior rather than
    *  just shrinking a floating window to fit). */
   isMobile?: boolean
+  /** Resolved (light/dark, 'system' already settled) theme — drives
+   *  the WebGL glass layer's tint. See GlassCanvas.tsx. */
+  resolvedTheme: 'light' | 'dark'
   onBack?: () => void
   animationPhase?: WindowAnimationPhase
   onClose: () => void
@@ -57,6 +61,7 @@ export default function Window({
   isMaximized,
   isFocused,
   isMobile = false,
+  resolvedTheme,
   onBack,
   animationPhase = null,
   onClose,
@@ -75,6 +80,11 @@ export default function Window({
     offsetY: number
   } | null>(null)
 
+  // Passed to GlassCanvas so it can measure this window's *real*
+  // rendered box when CSS (maximize/mobile), not x/y/width/height
+  // props, is what's driving its geometry. See GlassCanvas.tsx.
+  const containerRef = useRef<HTMLElement | null>(null)
+
   const handleTitlePointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
     if (isMobile) return
     if ((e.target as HTMLElement).closest('.os-traffic')) return
@@ -88,6 +98,13 @@ export default function Window({
   }
 
   const handleTitlePointerMove = (e: ReactPointerEvent<HTMLDivElement>) => {
+    // Drives the specular-highlight pseudo-element (.os-window__titlebar::after
+    // in PortfolioOS.css) regardless of whether a drag is in progress —
+    // plain imperative style mutation, not React state.
+    const rect = e.currentTarget.getBoundingClientRect()
+    e.currentTarget.style.setProperty('--glass-x', `${e.clientX - rect.left}px`)
+    e.currentTarget.style.setProperty('--glass-y', `${e.clientY - rect.top}px`)
+
     const drag = dragState.current
     if (!drag || drag.pointerId !== e.pointerId) return
     const nextX = e.clientX - drag.offsetX
@@ -203,6 +220,7 @@ export default function Window({
 
   return (
     <section
+      ref={containerRef}
       className={[
         'os-window',
         isMaximized ? 'os-window--maximized' : '',
@@ -227,6 +245,23 @@ export default function Window({
       role="dialog"
       aria-label={title}
     >
+      {/* Real WebGL glass — lens distortion + chromatic aberration +
+          variable blur, sampling the shared desktop background
+          (see GlassCanvas.tsx). Sits behind titlebar/content and in
+          front of this section's own CSS backdrop-filter background
+          (see .os-window / .os-window__glass-canvas in
+          PortfolioOS.css) — an enhancement layer, not a replacement,
+          so there's no broken/blank state without WebGL2. */}
+      <GlassCanvas
+        containerRef={containerRef}
+        x={x}
+        y={y}
+        width={width}
+        height={height}
+        isMaximized={isMaximized}
+        isMobile={isMobile}
+        theme={resolvedTheme}
+      />
       <div
         className="os-window__titlebar"
         onPointerDown={handleTitlePointerDown}

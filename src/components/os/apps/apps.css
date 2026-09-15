@@ -1,31 +1,40 @@
 .app {
   max-width: 68ch;
-  line-height: 1.55;
+  line-height: 1.6;
 }
 
 .app__title {
-  margin: 0 0 4px;
-  font-size: 24px;
-  font-weight: 700;
-  letter-spacing: -0.015em;
+  margin: 0 0 6px;
+  /* Editorial serif headline — the single biggest change that makes
+     an app window read as "About me" (reference) rather than a
+     generic settings-style panel with a bold sans label on top. */
+  font-family: var(--os-font-display);
+  font-size: clamp(28px, 3.4vw, 42px);
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
 }
 
 .app__section {
-  margin: 26px 0 10px;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--os-text-dim);
+  margin: 30px 0 12px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--os-accent);
 }
 
 .app__lede {
-  margin: 0 0 14px;
-  font-size: 15.5px;
+  margin: 0 0 16px;
+  font-size: 16px;
+  line-height: 1.6;
   color: var(--os-text);
 }
 
 .app__body {
-  margin: 0 0 12px;
-  font-size: 14px;
+  margin: 0 0 14px;
+  font-size: 14.5px;
+  line-height: 1.65;
   color: var(--os-text-dim);
 }
 
@@ -43,6 +52,55 @@
 
 .app__list li + li {
   margin-top: 4px;
+}
+
+/* ------------------------------------------------------------------
+   Photo section — ready for AboutApp.tsx (or any app) to use, not
+   wired into any component yet since that file wasn't provided.
+   Expected markup:
+
+     <div class="app__photo-grid">
+       <figure class="app__photo">
+         <img src={...} alt="..." />
+         <figcaption>Caption text</figcaption>
+       </figure>
+       <figure class="app__photo"> ... </figure>
+     </div>
+   ------------------------------------------------------------------ */
+
+.app__photo-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  margin: 20px 0;
+}
+
+.app__photo {
+  margin: 0;
+}
+
+.app__photo img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  object-fit: cover;
+  border-radius: 10px;
+  border: 1px solid var(--os-hairline);
+}
+
+.app__photo figcaption {
+  margin-top: 8px;
+  font-family: var(--os-font-display);
+  font-style: italic;
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--os-text-dim);
+}
+
+@container app-window (max-width: 560px) {
+  .app__photo-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* Chips */
@@ -111,7 +169,7 @@
 }
 
 .os-root .app__btn--primary:hover {
-  background: #5f99ff;
+  background: #c9a36c;
 }
 
 .os-root .app__back {
@@ -143,8 +201,8 @@
   font-weight: 700;
   border-radius: 50%;
   color: #fff;
-  background: linear-gradient(135deg, #5d6cfa, #a855f7);
-  box-shadow: 0 6px 18px rgba(93, 108, 250, 0.35);
+  background: linear-gradient(135deg, #c9a36c, #8a6a3f);
+  box-shadow: 0 6px 18px rgba(184, 147, 90, 0.35);
 }
 
 .app-about__role {
@@ -260,7 +318,7 @@
   margin-top: 6px;
   border-radius: 50%;
   background: var(--os-accent);
-  box-shadow: 0 0 0 4px rgba(76, 141, 255, 0.18);
+  box-shadow: 0 0 0 4px rgba(184, 147, 90, 0.2);
 }
 
 .app-experience__content {
@@ -473,6 +531,37 @@
   }
 }
 
+/* Per-app error boundary fallback */
+
+.app-crash {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding-top: 40px;
+}
+
+.app-crash__title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.app-crash__body {
+  margin: 0 0 6px;
+  font-size: 13.5px;
+  color: var(--os-text-dim);
+}
+
+.os-root .app-crash__retry {
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  border-radius: 9px;
+  background: var(--os-accent);
+  color: #fff;
+}
+
 /* Settings (Phase 4) */
 
 .app-settings__options {
@@ -499,8 +588,8 @@
 }
 
 .os-root .app-settings__option--active {
-  background: rgba(76, 141, 255, 0.16);
-  border-color: rgba(76, 141, 255, 0.4);
+  background: rgba(184, 147, 90, 0.18);
+  border-color: rgba(184, 147, 90, 0.45);
 }
 
 .app-settings__radio {

@@ -39,6 +39,25 @@ export default function TerminalApp({ openApp }: AppProps) {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight })
   }, [lines])
 
+  // Defensive re-focus: something was blurring the input after a
+  // command ran (reported as "works for one command, then stops
+  // taking input" — including in the deployed build). Rather than
+  // guess at exactly what stole focus, this checks whether focus
+  // fell all the way back to <body> — which only happens when an
+  // element was blurred without focus deliberately moving anywhere
+  // else — and reclaims it in that case. It does NOT fight you if
+  // you click into a window a command opened (e.g. `open projects`);
+  // that moves focus to a real element, not to <body>, so this
+  // leaves it alone.
+  useEffect(() => {
+    const id = window.requestAnimationFrame(() => {
+      if (document.activeElement === document.body || document.activeElement === null) {
+        inputRef.current?.focus()
+      }
+    })
+    return () => window.cancelAnimationFrame(id)
+  }, [lines])
+
   // Keeps the cursor visible if a long command ever makes the prompt
   // row wider than the window (paired with overflow-x: auto on
   // .app-terminal__prompt-row in apps.css).
