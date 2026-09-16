@@ -68,7 +68,7 @@ export default function TerminalApp({ openApp }: AppProps) {
   // it guarantees the input is focused again in time for the very
   // next one — no click required.
   useEffect(() => {
-    const onDocumentKeyDown = (e: KeyboardEvent) => {
+    const onDocumentKeyDown = () => {
       const active = document.activeElement
       if (active === inputRef.current) return
 
