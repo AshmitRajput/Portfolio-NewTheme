@@ -24,7 +24,7 @@ function isAppId(value: string): value is AppId {
   return APP_IDS.includes(value)
 }
 
-const WELCOME = "Welcome to RI/OS Terminal. Type 'help' to get started."
+const WELCOME = "Welcome to AR/OS Terminal. Type 'help' to get started."
 
 export default function TerminalApp({ openApp }: AppProps) {
   const [lines, setLines] = useState<Line[]>([{ type: 'output', text: WELCOME }])
@@ -39,16 +39,10 @@ export default function TerminalApp({ openApp }: AppProps) {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight })
   }, [lines])
 
-  // Defensive re-focus: something was blurring the input after a
-  // command ran (reported as "works for one command, then stops
-  // taking input" — including in the deployed build). Rather than
-  // guess at exactly what stole focus, this checks whether focus
-  // fell all the way back to <body> — which only happens when an
-  // element was blurred without focus deliberately moving anywhere
-  // else — and reclaims it in that case. It does NOT fight you if
-  // you click into a window a command opened (e.g. `open projects`);
-  // that moves focus to a real element, not to <body>, so this
-  // leaves it alone.
+  // Defensive re-focus, case 1: something was blurring the input after
+  // a command ran. If focus fell all the way back to <body> (which only
+  // happens when an element was blurred without focus deliberately
+  // moving anywhere else), reclaim it.
   useEffect(() => {
     const id = window.requestAnimationFrame(() => {
       if (document.activeElement === document.body || document.activeElement === null) {
@@ -57,6 +51,39 @@ export default function TerminalApp({ openApp }: AppProps) {
     })
     return () => window.cancelAnimationFrame(id)
   }, [lines])
+
+  // Defensive re-focus, case 2: as long as the Terminal is mounted
+  // (i.e. its window is open), any keystroke should go to it — even
+  // right after a command opened another app and moved focus there,
+  // or after clicking a Dock icon to switch back without clicking
+  // inside the terminal content itself.
+  //
+  // This listens on 'keydown' at the document level in the normal
+  // bubble phase (not capture) so it never interferes with the
+  // current key's own default handling. It only refocuses when focus
+  // isn't already on this input AND isn't on some other genuine text
+  // field belonging to another app — so it won't hijack typing into a
+  // different app's input/textarea. Because it runs on bubble, this
+  // particular keystroke may land wherever focus previously was, but
+  // it guarantees the input is focused again in time for the very
+  // next one — no click required.
+  useEffect(() => {
+    const onDocumentKeyDown = (e: KeyboardEvent) => {
+      const active = document.activeElement
+      if (active === inputRef.current) return
+
+      const isForeignTextField =
+        active instanceof HTMLInputElement ||
+        active instanceof HTMLTextAreaElement ||
+        (active instanceof HTMLElement && active.isContentEditable)
+
+      if (isForeignTextField) return // another app's real input owns this keystroke
+
+      inputRef.current?.focus()
+    }
+    document.addEventListener('keydown', onDocumentKeyDown)
+    return () => document.removeEventListener('keydown', onDocumentKeyDown)
+  }, [])
 
   // Keeps the cursor visible if a long command ever makes the prompt
   // row wider than the window (paired with overflow-x: auto on

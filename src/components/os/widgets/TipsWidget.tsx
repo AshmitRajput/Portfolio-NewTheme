@@ -11,7 +11,7 @@ export default function TipsWidget({ openApp }: TipsWidgetProps) {
 
   return (
     <section className="os-widget">
-      <h2 className="os-widget__title">RI/OS Tips</h2>
+      <h2 className="os-widget__title">AR/OS Tips</h2>
       <p className="os-widget__tip-text">{tip.text}</p>
       {tip.action && (
         <button

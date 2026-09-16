@@ -32,7 +32,7 @@ export default class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBo
 
   componentDidCatch(error: Error, info: { componentStack: string }) {
     // eslint-disable-next-line no-console
-    console.error('[RI/OS] caught a render error:', error, info.componentStack)
+    console.error('[AR/OS] caught a render error:', error, info.componentStack)
   }
 
   reset = () => this.setState({ error: null })

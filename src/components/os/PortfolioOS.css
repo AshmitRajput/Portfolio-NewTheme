@@ -937,6 +937,16 @@
   gap: 14px;
   overflow-y: auto;
   z-index: 10; /* above desktop icons, below open windows/dock */
+
+  /* Keep the rail scrollable, but hide the scrollbar itself. */
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* old Edge/IE */
+}
+
+.os-rail::-webkit-scrollbar {
+  display: none; /* Chrome/Safari/newer Edge */
+  width: 0;
+  height: 0;
 }
 
 .os-widget {
@@ -1182,11 +1192,6 @@
     grid-template-rows: repeat(2, auto);
   }
 
-  /* Real full-screen takeover now happens via the .os-window--mobile
-     class (set from isMobile in PortfolioOS.tsx/Window.tsx) rather
-     than forcing every window's box here — but resize handles stay
-     hidden as a defense-in-depth fallback for any window that
-     somehow renders without that class at this width. */
   .os-window__edge {
     display: none;
   }

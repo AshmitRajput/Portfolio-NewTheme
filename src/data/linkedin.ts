@@ -10,27 +10,17 @@ export type LinkedInPost = {
   image?: string
 }
 
-/**
- * TODO: swap these for your real recent posts. Nothing else needs to
- * change — LinkedInWidget.tsx just maps over this array.
- */
 export const linkedinPosts: LinkedInPost[] = [
   {
     id: 'post-1',
-    title: 'Shipped a voice agent that recovers failed payments end-to-end.',
-    date: '2 months ago',
-    url: 'https://linkedin.com/in/yourhandle',
+    title: 'Wrapping up an incredible internship at Triosoft Technologies',
+    date: 'Sep 14, 2026',
+    url: 'https://www.linkedin.com/posts/ashmit-rajput-10b817299_internship-softwareengineering-fullstackdevelopment-activity-7504776251170254848-8zHl',
   },
   {
     id: 'post-2',
-    title: 'Notes on running RAG pipelines reliably in production.',
-    date: '2 months ago',
-    url: 'https://linkedin.com/in/yourhandle',
-  },
-  {
-    id: 'post-3',
-    title: 'Building RI/OS — a desktop-style portfolio in React.',
-    date: '3 months ago',
-    url: 'https://linkedin.com/in/yourhandle',
+    title: 'Team Rain404 — Champion of Strategy Blitz 2025, among 100+ teams',
+    date: '2025',
+    url: 'https://www.linkedin.com/posts/ashmit-rajput-10b817299_innovation-cloudtechnology-strategyblitz-activity-7303333784668528640-x7l8',
   },
 ]

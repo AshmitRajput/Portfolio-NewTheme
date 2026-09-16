@@ -249,7 +249,7 @@ function OSCrashScreen() {
           Something went wrong.
         </p>
         <p style={{ fontSize: 13.5, color: 'rgba(240,243,250,0.6)', marginBottom: 20 }}>
-          RI/OS hit an unexpected error. Reloading the page should fix it.
+          AR/OS hit an unexpected error. Reloading the page should fix it.
         </p>
         <button
           onClick={() => window.location.reload()}
@@ -748,9 +748,9 @@ function PortfolioOSShell() {
         label: 'Help',
         items: [
           { label: 'LinkedIn profile ↗', external: profile.linkedin },
-          { label: 'About RI/OS', action: () => openApp('about') },
+          { label: 'About AR/OS', action: () => openApp('about') },
           'separator',
-          { label: 'How RI/OS was made', action: () => openApp('terminal') },
+          { label: 'How AR/OS was made', action: () => openApp('terminal') },
           'separator',
           { label: 'Privacy Policy', disabled: true },
           { label: 'Cookie Policy', disabled: true },
@@ -922,7 +922,7 @@ function PortfolioOSShell() {
                     <div className="app app-crash">
                       <p className="app-crash__title">{app.title} hit a snag.</p>
                       <p className="app-crash__body">
-                        Something in this window broke — the rest of RI/OS is fine.
+                        Something in this window broke — the rest of AR/OS is fine.
                       </p>
                       <button className="app-crash__retry" onClick={reset}>
                         Try again
