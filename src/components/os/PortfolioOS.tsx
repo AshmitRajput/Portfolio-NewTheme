@@ -3,10 +3,19 @@ import Window from './Window'
 import type { WindowAnimationPhase } from './Window'
 import Dock from './Dock'
 import DesktopIcon from './DesktopIcon'
+import RightRail from './RightRail'
+import ErrorBoundary from './ErrorBoundary'
 import { APP_COMPONENTS } from './apps'
 import { APPS } from '../../data/apps'
 import { profile } from '../../data/about'
 import type { AppId, WindowState } from './types'
+import { OSSettingsProvider, useOSSettings } from '../../hooks/useOSSettings'
+import type { ThemeMode } from '../../hooks/useOSSettings'
+import { loadWindowGeometry, saveWindowGeometry } from '../../hooks/windowGeometry'
+import {
+  initDesktopBackground,
+  recompositeDesktopBackground,
+} from '../../lib/glass/desktopBackground'
 import './PortfolioOS.css'
 import './apps/apps.css'
 
@@ -102,14 +111,55 @@ function MenuDropdown({
   )
 }
 
+/* Phase 4 — top-bar appearance toggle. Cycles light → dark → system.
+   Icon reflects the *resolved* theme; a small "A" badge marks
+   'system' mode specifically, since resolvedTheme alone can't tell
+   you the mode is auto rather than an explicit pick. */
+function ThemeToggle({
+  theme,
+  resolvedTheme,
+  onCycle,
+}: {
+  theme: ThemeMode
+  resolvedTheme: 'light' | 'dark'
+  onCycle: () => void
+}) {
+  const label =
+    theme === 'system'
+      ? `Appearance: System (currently ${resolvedTheme})`
+      : `Appearance: ${theme === 'dark' ? 'Dark' : 'Light'}`
+
+  return (
+    <button
+      className="os-menubar__theme-toggle"
+      onClick={onCycle}
+      title={label}
+      aria-label={label}
+    >
+      <span aria-hidden="true">{resolvedTheme === 'dark' ? '☾' : '☀'}</span>
+      {theme === 'system' && (
+        <span className="os-menubar__theme-auto" aria-hidden="true">
+          A
+        </span>
+      )}
+    </button>
+  )
+}
+
 function MenuBar({
   activeTitle,
   onExit,
   menus,
+  theme,
+  resolvedTheme,
+  onCycleTheme,
 }: {
   activeTitle: string | null
   onExit: () => void
   menus: MenuDef[]
+  theme: ThemeMode
+  resolvedTheme: 'light' | 'dark'
+  onCycleTheme: () => void
 }) {
   const [now, setNow] = useState(() => new Date())
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
@@ -163,6 +213,7 @@ function MenuBar({
         ))}
       </div>
       <div className="os-menubar__right">
+        <ThemeToggle theme={theme} resolvedTheme={resolvedTheme} onCycle={onCycleTheme} />
         <time className="os-menubar__clock">{clock}</time>
       </div>
     </header>
@@ -173,7 +224,67 @@ function MenuBar({
 /* Portfolio OS — Window Manager (Phase 2) + Menu system (Phase 3)     */
 /* ------------------------------------------------------------------ */
 
+/** Last-resort fallback if something crashes badly enough to escape
+ *  every inner boundary (Dock, each app window) below. Plain inline
+ *  styles on purpose — if things are broken enough to reach here,
+ *  the OS's own CSS variables might not be trustworthy either. */
+function OSCrashScreen() {
+  return (
+    <div
+      style={{
+        position: 'fixed',
+        inset: 0,
+        display: 'grid',
+        placeItems: 'center',
+        background: '#0c0f16',
+        color: 'rgba(240,243,250,0.92)',
+        fontFamily:
+          '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+        textAlign: 'center',
+        padding: 24,
+      }}
+    >
+      <div style={{ maxWidth: 360 }}>
+        <p style={{ fontSize: 15, fontWeight: 600, marginBottom: 8 }}>
+          Something went wrong.
+        </p>
+        <p style={{ fontSize: 13.5, color: 'rgba(240,243,250,0.6)', marginBottom: 20 }}>
+          AR/OS hit an unexpected error. Reloading the page should fix it.
+        </p>
+        <button
+          onClick={() => window.location.reload()}
+          style={{
+            padding: '9px 18px',
+            borderRadius: 8,
+            border: 'none',
+            background: '#b8935a',
+            color: '#fff',
+            fontSize: 13.5,
+            fontWeight: 500,
+            cursor: 'pointer',
+          }}
+        >
+          Reload
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export default function PortfolioOS() {
+  return (
+    <ErrorBoundary fallback={<OSCrashScreen />}>
+      <OSSettingsProvider>
+        <PortfolioOSShell />
+      </OSSettingsProvider>
+    </ErrorBoundary>
+  )
+}
+
+function PortfolioOSShell() {
+  const { theme, resolvedTheme, cycleTheme, showWidgets, setShowWidgets, rememberWindowPositions } =
+    useOSSettings()
+
   const [windows, setWindows] = useState<WindowState[]>([])
   const [selectedIcon, setSelectedIcon] = useState<AppId | null>(null)
 
@@ -188,18 +299,82 @@ export default function PortfolioOS() {
      mount of that app's component without reloading the whole page. */
   const [reloadKeys, setReloadKeys] = useState<Partial<Record<AppId, number>>>({})
 
-  /* View-menu toggles. No right rail / mascot exists yet (Phase 4), so
-     these are wired as real, persisted-in-state toggles with a visible
-     checkmark — not dead buttons — even though nothing else reads them
-     yet. */
+  /* View-menu toggles. `showWidgets` now lives in useOSSettings (Phase
+     4) so it stays in sync with the same switch in the Settings app
+     and persists across reloads. `showResident` still has no mascot
+     to control yet, so it stays local for now. */
   const [showResident, setShowResident] = useState(true)
-  const [showWidgets, setShowWidgets] = useState(true)
   const [isFullscreen, setIsFullscreen] = useState(false)
+
+  /* ------------------------------------------------------------------
+     Phase 5 — mobile takeover mode.
+
+     Below 720px, floating/draggable/resizable windows stop making
+     sense (there's no room to drag anything anywhere, and pinch/drag
+     gestures conflict with page scroll). Real mobile OSes solve this
+     by making the open app BE the screen — one at a time, with a way
+     back to a home screen — rather than just shrinking a window to
+     fit. `isMobile` is reactive (matchMedia, not a one-time check) so
+     rotating a tablet or resizing a browser window crosses the
+     breakpoint live instead of needing a refresh.
+     ------------------------------------------------------------------ */
+  const [isMobile, setIsMobile] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia('(max-width: 720px)').matches
+  )
+
+  useEffect(() => {
+    const mql = window.matchMedia('(max-width: 720px)')
+    const onChange = () => setIsMobile(mql.matches)
+    mql.addEventListener('change', onChange)
+    return () => mql.removeEventListener('change', onChange)
+  }, [])
 
   const zCounter = useRef(10)
   const cascade = useRef(0)
   const animationTimers = useRef<Partial<Record<AppId, number>>>({})
   const rootRef = useRef<HTMLDivElement>(null)
+
+  /* ------------------------------------------------------------------
+     WebGL glass — shared desktop-background compositor (see
+     lib/glass/desktopBackground.ts). One offscreen canvas, mirroring
+     .os-root's own wallpaper + theme scrim, that every open window's
+     GlassCanvas crops its own on-screen rect out of. Initialized once
+     here; every window instance just reads from it.
+     ------------------------------------------------------------------ */
+  useEffect(() => {
+    const rootEl = rootRef.current
+    if (!rootEl) return
+    // Read the wallpaper path from the same CSS custom property
+    // .os-root's background-image uses, rather than hardcoding it a
+    // second time here.
+    const raw = getComputedStyle(rootEl).getPropertyValue('--os-wallpaper').trim()
+    const match = raw.match(/url\(["']?(.*?)["']?\)/)
+    const wallpaperUrl = match ? match[1] : '/deskbg.png'
+    initDesktopBackground(wallpaperUrl, resolvedTheme, window.innerWidth, window.innerHeight)
+    // Wallpaper URL is static for the app's lifetime — only need this once.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Theme changes recolor the scrim baked into the composite.
+  useEffect(() => {
+    recompositeDesktopBackground(resolvedTheme, window.innerWidth, window.innerHeight)
+  }, [resolvedTheme])
+
+  // Viewport resize changes the cover-fit crop of the wallpaper.
+  useEffect(() => {
+    let raf = 0
+    const onResize = () => {
+      cancelAnimationFrame(raf)
+      raf = requestAnimationFrame(() => {
+        recompositeDesktopBackground(resolvedTheme, window.innerWidth, window.innerHeight)
+      })
+    }
+    window.addEventListener('resize', onResize)
+    return () => {
+      window.removeEventListener('resize', onResize)
+      cancelAnimationFrame(raf)
+    }
+  }, [resolvedTheme])
 
   const nextZ = () => ++zCounter.current
 
@@ -217,6 +392,20 @@ export default function PortfolioOS() {
 
   /* ---------------- Core window actions ---------------- */
 
+  // Settings > Windows > "Remember window positions" — persists on
+  // every move/resize/maximize-toggle while the setting is on. Closing
+  // a window intentionally leaves its last geometry in storage, so
+  // reopening it later still restores where it was.
+  useEffect(() => {
+    if (!rememberWindowPositions) return
+    const all = loadWindowGeometry()
+    for (const w of windows) {
+      if (!w.isOpen) continue
+      all[w.id] = { x: w.x, y: w.y, width: w.width, height: w.height, isMaximized: w.isMaximized }
+    }
+    saveWindowGeometry(all)
+  }, [windows, rememberWindowPositions])
+
   const openWindow = (id: AppId) => {
     setSelectedIcon(null)
     setWindows((prev) => {
@@ -226,9 +415,13 @@ export default function PortfolioOS() {
       const minWidth = app.minWidth ?? MIN_WINDOW_WIDTH
       const minHeight = app.minHeight ?? MIN_WINDOW_HEIGHT
 
+      // Settings > Windows > "Remember window positions": reopen this
+      // app exactly where it was left, instead of the usual cascade.
+      const saved = rememberWindowPositions ? loadWindowGeometry()[id] : undefined
+
       const offset = (cascade.current++ % 6) * 32
-      const rawWidth = app.defaultSize.width * DEFAULT_SIZE_SCALE
-      const rawHeight = app.defaultSize.height * DEFAULT_SIZE_SCALE
+      const rawWidth = saved?.width ?? app.defaultSize.width * DEFAULT_SIZE_SCALE
+      const rawHeight = saved?.height ?? app.defaultSize.height * DEFAULT_SIZE_SCALE
 
       // Never open smaller than the app's own minimum, and never larger
       // than the viewport allows.
@@ -240,8 +433,12 @@ export default function PortfolioOS() {
         Math.max(rawHeight, minHeight),
         window.innerHeight - 140
       )
-      const x = Math.max(24, (window.innerWidth - width) / 2 + offset)
-      const y = Math.max(56, (window.innerHeight - height) / 2.4 + offset)
+      const x = saved
+        ? Math.min(Math.max(saved.x, 8), Math.max(8, window.innerWidth - width - 8))
+        : Math.max(24, (window.innerWidth - width) / 2 + offset)
+      const y = saved
+        ? Math.min(Math.max(saved.y, 48), Math.max(48, window.innerHeight - height - 8))
+        : Math.max(56, (window.innerHeight - height) / 2.4 + offset)
 
       return [
         ...prev,
@@ -255,7 +452,7 @@ export default function PortfolioOS() {
           minHeight,
           isOpen: true,
           isMinimized: false,
-          isMaximized: false,
+          isMaximized: saved?.isMaximized ?? false,
           zIndex: nextZ(),
         },
       ]
@@ -447,6 +644,10 @@ export default function PortfolioOS() {
   const focusedTitle =
     APPS.find((a) => a.id === focusedId)?.title ?? null
 
+  // On mobile, focusedId doubles as "which app is taking over the
+  // screen right now" — null means the home screen (icons + dock).
+  const mobileVisibleId = isMobile ? focusedId : null
+
   const exitToLanding = () => {
     window.location.hash = ''
   }
@@ -547,9 +748,9 @@ export default function PortfolioOS() {
         label: 'Help',
         items: [
           { label: 'LinkedIn profile ↗', external: profile.linkedin },
-          { label: 'About RI/OS', action: () => openApp('about') },
+          { label: 'About AR/OS', action: () => openApp('about') },
           'separator',
-          { label: 'How RI/OS was made', action: () => openApp('terminal') },
+          { label: 'How AR/OS was made', action: () => openApp('terminal') },
           'separator',
           { label: 'Privacy Policy', disabled: true },
           { label: 'Cookie Policy', disabled: true },
@@ -611,8 +812,37 @@ export default function PortfolioOS() {
   }, [focusedId, windows])
 
   return (
-    <div className="os-root" ref={rootRef}>
-      <MenuBar activeTitle={focusedTitle} onExit={exitToLanding} menus={menus} />
+    <div className="os-root" data-theme={resolvedTheme} ref={rootRef}>
+      {/* Zero-size, invisible — just registers the filter definition
+          referenced by `filter: url(#os-glass-distort)` on the Dock
+          tray and window titlebars (see PortfolioOS.css). A single
+          shared def, not one per surface. */}
+      <svg width="0" height="0" style={{ position: 'absolute' }} aria-hidden="true">
+        <filter id="os-glass-distort">
+          <feTurbulence
+            type="fractalNoise"
+            baseFrequency="0.012 0.02"
+            numOctaves={2}
+            seed={7}
+            result="noise"
+          />
+          <feDisplacementMap
+            in="SourceGraphic"
+            in2="noise"
+            scale="6"
+            xChannelSelector="R"
+            yChannelSelector="G"
+          />
+        </filter>
+      </svg>
+      <MenuBar
+        activeTitle={focusedTitle}
+        onExit={exitToLanding}
+        menus={menus}
+        theme={theme}
+        resolvedTheme={resolvedTheme}
+        onCycleTheme={cycleTheme}
+      />
 
       <main
         className="os-desktop"
@@ -620,18 +850,25 @@ export default function PortfolioOS() {
           if (e.target === e.currentTarget) setSelectedIcon(null)
         }}
       >
-        <div className="os-desktop__icons">
-          {APPS.filter((a) => a.showOnDesktop).map((app) => (
-            <DesktopIcon
-              key={app.id}
-              icon={app.icon}
-              label={app.title}
-              isSelected={selectedIcon === app.id}
-              onSelect={() => setSelectedIcon(app.id)}
-              onOpen={() => openApp(app.id)}
-            />
-          ))}
-        </div>
+        {/* Home screen (icon grid) is hidden while an app has taken
+            over the screen on mobile — it's "underneath" the app, not
+            actually removed, so it's exactly where it was when you
+            tap Home. */}
+        {!(isMobile && mobileVisibleId) && (
+          <div className="os-desktop__icons">
+            {APPS.filter((a) => a.showOnDesktop).map((app) => (
+              <DesktopIcon
+                key={app.id}
+                icon={app.icon}
+                label={app.title}
+                isSelected={selectedIcon === app.id}
+                isMobile={isMobile}
+                onSelect={() => setSelectedIcon(app.id)}
+                onOpen={() => openApp(app.id)}
+              />
+            ))}
+          </div>
+        )}
 
         {windows
           // Keep rendering a window while it's mid-minimize so the
@@ -640,7 +877,11 @@ export default function PortfolioOS() {
           .filter(
             (w) =>
               w.isOpen &&
-              (!w.isMinimized || animationPhases[w.id] === 'minimizing')
+              (!w.isMinimized || animationPhases[w.id] === 'minimizing') &&
+              // Mobile takeover: only the one app "on screen" renders
+              // at all — others stay in `windows` state (so reopening
+              // them later restores their content) but aren't mounted.
+              (!isMobile || w.id === mobileVisibleId)
           )
           .map((w) => {
             const app = APPS.find((a) => a.id === w.id)
@@ -659,6 +900,9 @@ export default function PortfolioOS() {
                 zIndex={w.zIndex}
                 isMaximized={w.isMaximized}
                 isFocused={focusedId === w.id}
+                isMobile={isMobile}
+                resolvedTheme={resolvedTheme}
+                onBack={() => closeWindow(w.id)}
                 animationPhase={animationPhases[w.id] ?? null}
                 onClose={() => closeWindow(w.id)}
                 onMinimize={() => minimizeWindow(w.id)}
@@ -673,17 +917,39 @@ export default function PortfolioOS() {
               >
                 {/* keyed by reloadKeys so View > Reload content / Cmd+R
                     forces a fresh mount without a full page reload */}
-                <AppComponent key={reloadKeys[w.id] ?? 0} openApp={openApp} />
+                <ErrorBoundary
+                  fallback={(_error, reset) => (
+                    <div className="app app-crash">
+                      <p className="app-crash__title">{app.title} hit a snag.</p>
+                      <p className="app-crash__body">
+                        Something in this window broke — the rest of AR/OS is fine.
+                      </p>
+                      <button className="app-crash__retry" onClick={reset}>
+                        Try again
+                      </button>
+                    </div>
+                  )}
+                >
+                  <AppComponent key={reloadKeys[w.id] ?? 0} openApp={openApp} />
+                </ErrorBoundary>
               </Window>
             )
           })}
+
+        <RightRail openApp={openApp} visible={showWidgets} />
       </main>
 
-      <Dock
-        apps={APPS.filter((a) => a.showInDock)}
-        windows={windows}
-        onAppClick={openApp}
-      />
+      {/* Dock steps aside while an app owns the whole screen on
+          mobile — same reasoning as hiding the icon grid above. */}
+      {!(isMobile && mobileVisibleId) && (
+        <ErrorBoundary fallback={null}>
+          <Dock
+            apps={APPS.filter((a) => a.showInDock)}
+            windows={windows}
+            onAppClick={openApp}
+          />
+        </ErrorBoundary>
+      )}
     </div>
   )
 }

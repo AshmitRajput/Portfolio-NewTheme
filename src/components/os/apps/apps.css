@@ -1,31 +1,40 @@
 .app {
   max-width: 68ch;
-  line-height: 1.55;
+  line-height: 1.6;
 }
 
 .app__title {
-  margin: 0 0 4px;
-  font-size: 24px;
-  font-weight: 700;
-  letter-spacing: -0.015em;
+  margin: 0 0 6px;
+  /* Editorial serif headline — the single biggest change that makes
+     an app window read as "About me" (reference) rather than a
+     generic settings-style panel with a bold sans label on top. */
+  font-family: var(--os-font-display);
+  font-size: clamp(28px, 3.4vw, 42px);
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
 }
 
 .app__section {
-  margin: 26px 0 10px;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--os-text-dim);
+  margin: 30px 0 12px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--os-accent);
 }
 
 .app__lede {
-  margin: 0 0 14px;
-  font-size: 15.5px;
+  margin: 0 0 16px;
+  font-size: 16px;
+  line-height: 1.6;
   color: var(--os-text);
 }
 
 .app__body {
-  margin: 0 0 12px;
-  font-size: 14px;
+  margin: 0 0 14px;
+  font-size: 14.5px;
+  line-height: 1.65;
   color: var(--os-text-dim);
 }
 
@@ -43,6 +52,55 @@
 
 .app__list li + li {
   margin-top: 4px;
+}
+
+/* ------------------------------------------------------------------
+   Photo section — ready for AboutApp.tsx (or any app) to use, not
+   wired into any component yet since that file wasn't provided.
+   Expected markup:
+
+     <div class="app__photo-grid">
+       <figure class="app__photo">
+         <img src={...} alt="..." />
+         <figcaption>Caption text</figcaption>
+       </figure>
+       <figure class="app__photo"> ... </figure>
+     </div>
+   ------------------------------------------------------------------ */
+
+.app__photo-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  margin: 20px 0;
+}
+
+.app__photo {
+  margin: 0;
+}
+
+.app__photo img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  object-fit: cover;
+  border-radius: 10px;
+  border: 1px solid var(--os-hairline);
+}
+
+.app__photo figcaption {
+  margin-top: 8px;
+  font-family: var(--os-font-display);
+  font-style: italic;
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--os-text-dim);
+}
+
+@container app-window (max-width: 560px) {
+  .app__photo-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* Chips */
@@ -111,7 +169,7 @@
 }
 
 .os-root .app__btn--primary:hover {
-  background: #5f99ff;
+  background: #c9a36c;
 }
 
 .os-root .app__back {
@@ -143,8 +201,8 @@
   font-weight: 700;
   border-radius: 50%;
   color: #fff;
-  background: linear-gradient(135deg, #5d6cfa, #a855f7);
-  box-shadow: 0 6px 18px rgba(93, 108, 250, 0.35);
+  background: linear-gradient(135deg, #c9a36c, #8a6a3f);
+  box-shadow: 0 6px 18px rgba(184, 147, 90, 0.35);
 }
 
 .app-about__role {
@@ -260,7 +318,7 @@
   margin-top: 6px;
   border-radius: 50%;
   background: var(--os-accent);
-  box-shadow: 0 0 0 4px rgba(76, 141, 255, 0.18);
+  box-shadow: 0 0 0 4px rgba(184, 147, 90, 0.2);
 }
 
 .app-experience__content {
@@ -398,8 +456,23 @@
   display: flex;
   align-items: center;
   gap: 6px;
+  /* If a very long command ever makes the row wider than the window,
+     scroll horizontally instead of silently clipping the cursor
+     off-screen — paired with the scrollIntoView call in
+     TerminalApp.tsx so typing always keeps the cursor visible. */
+  overflow-x: auto;
+  scrollbar-width: none;
+  /* Locked to the exact same family/size/line-height as `.app-terminal
+     pre` above, so a line looks identical whether it's still being
+     typed or has already scrolled into history — nothing should
+     visibly resize when Enter is pressed. */
   font-family: 'SF Mono', ui-monospace, 'Cascadia Code', Consolas, monospace;
   font-size: 13px;
+  line-height: 1.6;
+}
+
+.app-terminal__prompt-row::-webkit-scrollbar {
+  display: none;
 }
 
 .app-terminal__prompt {
@@ -408,22 +481,45 @@
   white-space: nowrap;
 }
 
-.os-root .app-terminal__input {
-  flex: 1;
+/* Groups the input + block cursor with zero gap between them, so the
+   cursor sits flush against the last typed character instead of at
+   the far end of the (previously full-width) prompt row. */
+.app-terminal__input-wrap {
+  display: inline-flex;
+  align-items: center;
   min-width: 0;
+  max-width: 100%;
+}
+
+.os-root .app-terminal__input {
+  flex: none;
+  width: 1ch; /* overridden inline per keystroke, in ch units — see TerminalApp.tsx */
+  min-width: 1ch;
+  max-width: 100%;
   padding: 0;
   border: none;
   outline: none;
   background: transparent;
   color: #9fe8b2;
   font: inherit;
-  caret-color: #9fe8b2;
+  font-size: inherit;
+  line-height: inherit;
+  /* Defensive: .os-window__content already sets user-select: text, but
+     pin it explicitly here too so no ancestor rule can ever leave this
+     input non-interactive. */
+  user-select: text;
+  pointer-events: auto;
+  /* The block cursor below is the ONLY cursor — hide the browser's
+     own thin line caret so typing never shows two of them. */
+  caret-color: transparent;
 }
 
 .app-terminal__cursor {
   display: inline-block;
+  flex-shrink: 0;
   width: 8px;
   height: 15px;
+  margin-left: 1px;
   vertical-align: text-bottom;
   background: #9fe8b2;
   animation: app-cursor-blink 1.1s steps(1) infinite;
@@ -432,6 +528,214 @@
 @keyframes app-cursor-blink {
   50% {
     opacity: 0;
+  }
+}
+
+/* Per-app error boundary fallback */
+
+.app-crash {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding-top: 40px;
+}
+
+.app-crash__title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.app-crash__body {
+  margin: 0 0 6px;
+  font-size: 13.5px;
+  color: var(--os-text-dim);
+}
+
+.os-root .app-crash__retry {
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  border-radius: 9px;
+  background: var(--os-accent);
+  color: #fff;
+}
+
+/* Settings (Phase 4) */
+
+.app-settings__options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.os-root .app-settings__option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  text-align: left;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.os-root .app-settings__option:hover {
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.os-root .app-settings__option--active {
+  background: rgba(184, 147, 90, 0.18);
+  border-color: rgba(184, 147, 90, 0.45);
+}
+
+.app-settings__radio {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255, 255, 255, 0.3);
+}
+
+.app-settings__option--active .app-settings__radio {
+  border-color: var(--os-accent);
+  background: radial-gradient(var(--os-accent) 0 42%, transparent 44%);
+}
+
+.app-settings__option-label {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.app-settings__option-hint {
+  display: block;
+  margin-top: 1px;
+  font-size: 12.5px;
+  color: var(--os-text-dim);
+}
+
+.app-settings__option-hint--block {
+  margin-top: 3px;
+}
+
+.app-settings__toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 12px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.os-root .app-settings__switch {
+  position: relative;
+  flex-shrink: 0;
+  width: 40px;
+  height: 24px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+  transition: background 0.15s ease;
+}
+
+.os-root .app-settings__switch--on {
+  background: var(--os-accent);
+}
+
+.app-settings__switch-knob {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+  transition: transform 0.15s ease;
+}
+
+.app-settings__switch--on .app-settings__switch-knob {
+  transform: translateX(16px);
+}
+
+.app-settings__note {
+  margin-top: 24px;
+}
+
+/* ------------------------------------------------------------------
+   Phase 5 — container-query reflow (closes the Phase 1 gap).
+
+   Every app lives inside .os-window__content, which is the
+   container-query root (container-name: app-window, set in
+   PortfolioOS.css). These rules key off THAT element's width — i.e.
+   the window's own width — not the browser viewport, so resizing one
+   window never affects any other window's layout.
+
+   .app-projects__grid is deliberately NOT touched here: `repeat(
+   auto-fill, minmax(230px, 1fr))` already reflows its column count
+   against its own container width with zero extra code, which is
+   the same "respond to the window, not the browser" goal these
+   @container rules exist for.
+   ------------------------------------------------------------------ */
+
+@container app-window (max-width: 480px) {
+  .app {
+    max-width: none;
+  }
+
+  /* Photo/name-style header rows collapse to stacked instead of
+     squeezing both columns unreadably thin. */
+  .app-about__header,
+  .app-about__edu-head,
+  .app-experience__head,
+  .app-projects__header,
+  .app-project__header,
+  .app-resume__bar,
+  .app-contact__row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+
+  .app-contact__value {
+    text-align: left;
+  }
+
+  /* Full-width action buttons read better than a cramped wrapped row
+     once the window is this narrow. */
+  .app__actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .os-root .app__btn {
+    justify-content: center;
+  }
+}
+
+@container app-window (min-width: 720px) {
+  /* Extra breathing room once there's real space, matching the
+     plan's "small window vs large window" About mockup. */
+  .app-about__header {
+    gap: 24px;
+  }
+
+  .app-about__avatar {
+    width: 84px;
+    height: 84px;
+    font-size: 34px;
+  }
+
+  .app__lede {
+    font-size: 17px;
   }
 }
 

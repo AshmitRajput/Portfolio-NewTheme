@@ -24,7 +24,7 @@ function isAppId(value: string): value is AppId {
   return APP_IDS.includes(value)
 }
 
-const WELCOME = "Welcome to RI/OS Terminal. Type 'help' to get started."
+const WELCOME = "Welcome to AR/OS Terminal. Type 'help' to get started."
 
 export default function TerminalApp({ openApp }: AppProps) {
   const [lines, setLines] = useState<Line[]>([{ type: 'output', text: WELCOME }])
@@ -38,6 +38,59 @@ export default function TerminalApp({ openApp }: AppProps) {
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight })
   }, [lines])
+
+  // Defensive re-focus, case 1: something was blurring the input after
+  // a command ran. If focus fell all the way back to <body> (which only
+  // happens when an element was blurred without focus deliberately
+  // moving anywhere else), reclaim it.
+  useEffect(() => {
+    const id = window.requestAnimationFrame(() => {
+      if (document.activeElement === document.body || document.activeElement === null) {
+        inputRef.current?.focus()
+      }
+    })
+    return () => window.cancelAnimationFrame(id)
+  }, [lines])
+
+  // Defensive re-focus, case 2: as long as the Terminal is mounted
+  // (i.e. its window is open), any keystroke should go to it — even
+  // right after a command opened another app and moved focus there,
+  // or after clicking a Dock icon to switch back without clicking
+  // inside the terminal content itself.
+  //
+  // This listens on 'keydown' at the document level in the normal
+  // bubble phase (not capture) so it never interferes with the
+  // current key's own default handling. It only refocuses when focus
+  // isn't already on this input AND isn't on some other genuine text
+  // field belonging to another app — so it won't hijack typing into a
+  // different app's input/textarea. Because it runs on bubble, this
+  // particular keystroke may land wherever focus previously was, but
+  // it guarantees the input is focused again in time for the very
+  // next one — no click required.
+  useEffect(() => {
+    const onDocumentKeyDown = () => {
+      const active = document.activeElement
+      if (active === inputRef.current) return
+
+      const isForeignTextField =
+        active instanceof HTMLInputElement ||
+        active instanceof HTMLTextAreaElement ||
+        (active instanceof HTMLElement && active.isContentEditable)
+
+      if (isForeignTextField) return // another app's real input owns this keystroke
+
+      inputRef.current?.focus()
+    }
+    document.addEventListener('keydown', onDocumentKeyDown)
+    return () => document.removeEventListener('keydown', onDocumentKeyDown)
+  }, [])
+
+  // Keeps the cursor visible if a long command ever makes the prompt
+  // row wider than the window (paired with overflow-x: auto on
+  // .app-terminal__prompt-row in apps.css).
+  useEffect(() => {
+    inputRef.current?.scrollIntoView({ block: 'nearest', inline: 'end' })
+  }, [input])
 
   const print = (text: string, type: Line['type'] = 'output') =>
     setLines((prev) => [...prev, { type, text }])
@@ -61,6 +114,7 @@ export default function TerminalApp({ openApp }: AppProps) {
           '  skills       what I work with',
           '  resume       open my resume',
           '  contact      get in touch',
+          '  settings     appearance & widgets',
           '  open <app>   open any app by id',
           '  whoami       current user',
           '  date         current date & time',
@@ -73,6 +127,7 @@ export default function TerminalApp({ openApp }: AppProps) {
     skills: () => openAndReport('skills', 'Skills'),
     resume: () => openAndReport('resume', 'Resume'),
     contact: () => openAndReport('contact', 'Contact'),
+    settings: () => openAndReport('settings', 'Settings'),
     whoami: () => print('ashmit'),
     date: () => print(new Date().toString()),
     clear: () => setLines([]),
@@ -172,18 +227,29 @@ export default function TerminalApp({ openApp }: AppProps) {
         </pre>
         <div className="app-terminal__prompt-row">
           <span className="app-terminal__prompt">{PROMPT}</span>
-          <input
-            ref={inputRef}
-            className="app-terminal__input"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            autoFocus
-            spellCheck={false}
-            autoComplete="off"
-            aria-label="Terminal input"
-          />
-          <span className="app-terminal__cursor" aria-hidden="true" />
+          <span className="app-terminal__input-wrap">
+            {/*
+              The input is sized to exactly fit what's been typed (in
+              `ch` units, which line up 1:1 with a monospace font) so
+              the block cursor right after it always sits at the true
+              end of the text — never stranded at the far edge of the
+              row. The native line caret is hidden (caret-color:
+              transparent in CSS) so there's only ever one cursor.
+            */}
+            <input
+              ref={inputRef}
+              className="app-terminal__input"
+              style={{ width: `${Math.max(input.length, 1)}ch` }}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              autoFocus
+              spellCheck={false}
+              autoComplete="off"
+              aria-label="Terminal input"
+            />
+            <span className="app-terminal__cursor" aria-hidden="true" />
+          </span>
         </div>
       </div>
     </div>

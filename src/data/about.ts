@@ -1,5 +1,5 @@
 /**
- * Profile content. Everything marked TODO is placeholder — edit freely.
+ * Profile content.
  */
 
 export type Education = {
@@ -10,39 +10,45 @@ export type Education = {
 }
 
 export const profile = {
-  name: 'Ashmit',
-  role: 'AI & Full-stack Developer', // TODO
+  name: 'Ashmit Rajput',
+  role: 'Software Engineer | Backend & AI',
   tagline:
-    'I build AI-powered products end to end — from LLM pipelines to the React interfaces people actually use.', // TODO
-  location: 'India', // TODO
+    'I build production-ready software across backend systems, AI, cloud infrastructure, and everything in between.',
+  location: 'India',
 
   bio: [
-    // TODO: replace with your own words. 2–3 short paragraphs works best.
-    'I work at the intersection of machine learning and product engineering. Most of my recent work has been on conversational AI: voice agents, retrieval-augmented generation and the infrastructure needed to run them reliably.',
-    'I care about shipping things that hold up in production — clean APIs, sensible data models and interfaces that make complex systems feel simple.',
+    'I’m a B.Tech Information Technology student at IIIT Bhopal who enjoys turning difficult problems into reliable, usable software. My work spans backend engineering, AI/LLM applications, cloud infrastructure, and distributed systems.',
+    'I’ve built production Django and Redis systems, conversational AI and RAG pipelines, fine-tuned Llama 3.1 8B with LoRA/QLoRA, and deployed applications across AWS, Kubernetes, and CI/CD environments.',
+    'Beyond engineering, I’ve led a 30-member developer community, organized technical events for 2,300+ participants, taught AWS/GCP/DevOps to 500+ students, and worked with external companies on technology integrations and partnerships. I enjoy learning quickly, communicating clearly, and taking ownership from idea to production.',
   ],
 
   education: [
     {
-      degree: 'B.Tech in Computer Science', // TODO
-      institution: 'Your University', // TODO
-      period: '2021 — 2025', // TODO
-      detail: 'Focus on machine learning and distributed systems.', // TODO
+      degree: 'B.Tech in Information Technology',
+      institution: 'Indian Institute of Information Technology, Bhopal',
+      period: '2023 — 2027',
+      detail:
+        'CGPA: 7.67 · Coursework: DSA, Computer Networks, DBMS, Operating Systems, OOP, Distributed Systems, Software Engineering',
     },
   ] satisfies Education[],
 
   interests: [
-    'LLM applications',
-    'RAG systems',
-    'Voice agents',
+    'Backend Engineering',
+    'Distributed Systems',
+    'AI Engineering',
+    'LLM Applications',
+    'RAG Systems',
+    'Voice Agents',
     'MLOps',
-    'Developer tooling',
-  ], // TODO
+    'Cloud Infrastructure',
+    'DevSecOps',
+    'Scalable Computing',
+  ],
 
   // Contact — used by the Contact app and the Resume app
-  email: 'you@example.com', // TODO
-  github: 'https://github.com/yourhandle', // TODO
-  linkedin: 'https://linkedin.com/in/yourhandle', // TODO
+  email: 'ashmitrajput1007@gmail.com',
+  github: 'https://github.com/AshmitRajput',
+  linkedin: 'https://www.linkedin.com/in/ashmit-rajput-10b817299/', // TODO: replace with your real LinkedIn URL
   twitter: '', // optional — leave empty to hide
 
   // Drop resume.pdf into /public and this path just works

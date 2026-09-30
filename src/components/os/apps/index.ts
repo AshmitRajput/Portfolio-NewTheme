@@ -7,6 +7,7 @@ import SkillsApp from './SkillsApp'
 import ResumeApp from './ResumeApp'
 import ContactApp from './ContactApp'
 import TerminalApp from './TerminalApp'
+import SettingsApp from './SettingsApp'
 
 /** Every app receives these — lets apps open other apps (About → Projects). */
 export type AppProps = {
@@ -21,4 +22,5 @@ export const APP_COMPONENTS: Record<AppId, ComponentType<AppProps>> = {
   resume: ResumeApp,
   contact: ContactApp,
   terminal: TerminalApp,
+  settings: SettingsApp,
 }

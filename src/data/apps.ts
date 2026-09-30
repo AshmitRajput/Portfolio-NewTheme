@@ -80,4 +80,14 @@ export const APPS: AppDefinition[] = [
     minWidth: 420,
     minHeight: 300,
   },
+  {
+    id: 'settings',
+    title: 'Settings',
+    icon: '⚙️',
+    showOnDesktop: false,
+    showInDock: true,
+    defaultSize: { width: 640, height: 540 },
+    minWidth: 380,
+    minHeight: 380,
+  },
 ]

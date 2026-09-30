@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import heroGif from '../assets/hero.gif'
 import CtaButton from './CtaButton'
+import { profile } from '../data/about'
 import './hero.css'
 
 const INTRO_LINES = [
@@ -173,8 +174,13 @@ function Hero() {
         </div>
 
         <div className="hero__actions">
-          <CtaButton href="#work" label="View work" />
-          <CtaButton href="#contact" label="Contact" className="cta-button--secondary" />
+          <CtaButton href="/#app" label="View Portfolio" />
+          <CtaButton
+            href={profile.resumeUrl}
+            label="Download Resume"
+            download={`${profile.name} Resume.pdf`}
+            className="cta-button--secondary"
+          />
         </div>
       </div>
     </section>

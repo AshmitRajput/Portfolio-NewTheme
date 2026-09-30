@@ -1,5 +1,6 @@
 import { useRef } from 'react'
 import type { PointerEvent as ReactPointerEvent, ReactNode } from 'react'
+import GlassCanvas from './GlassCanvas'
 
 const MENUBAR_HEIGHT = 38
 const EDGE_MARGIN = 80
@@ -23,6 +24,16 @@ type WindowProps = {
   zIndex: number
   isMaximized: boolean
   isFocused: boolean
+  /** Phase 5 — mobile takeover mode. When true, this window IS the
+   *  screen: no drag, no resize handles, and the title bar shows a
+   *  single back affordance instead of traffic lights (matching the
+   *  plan's "Mobile: app opens full screen" behavior rather than
+   *  just shrinking a floating window to fit). */
+  isMobile?: boolean
+  /** Resolved (light/dark, 'system' already settled) theme — drives
+   *  the WebGL glass layer's tint. See GlassCanvas.tsx. */
+  resolvedTheme: 'light' | 'dark'
+  onBack?: () => void
   animationPhase?: WindowAnimationPhase
   onClose: () => void
   onMinimize: () => void
@@ -49,6 +60,9 @@ export default function Window({
   zIndex,
   isMaximized,
   isFocused,
+  isMobile = false,
+  resolvedTheme,
+  onBack,
   animationPhase = null,
   onClose,
   onMinimize,
@@ -66,7 +80,13 @@ export default function Window({
     offsetY: number
   } | null>(null)
 
+  // Passed to GlassCanvas so it can measure this window's *real*
+  // rendered box when CSS (maximize/mobile), not x/y/width/height
+  // props, is what's driving its geometry. See GlassCanvas.tsx.
+  const containerRef = useRef<HTMLElement | null>(null)
+
   const handleTitlePointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
+    if (isMobile) return
     if ((e.target as HTMLElement).closest('.os-traffic')) return
     if (isMaximized) return
     dragState.current = {
@@ -78,6 +98,13 @@ export default function Window({
   }
 
   const handleTitlePointerMove = (e: ReactPointerEvent<HTMLDivElement>) => {
+    // Drives the specular-highlight pseudo-element (.os-window__titlebar::after
+    // in PortfolioOS.css) regardless of whether a drag is in progress —
+    // plain imperative style mutation, not React state.
+    const rect = e.currentTarget.getBoundingClientRect()
+    e.currentTarget.style.setProperty('--glass-x', `${e.clientX - rect.left}px`)
+    e.currentTarget.style.setProperty('--glass-y', `${e.clientY - rect.top}px`)
+
     const drag = dragState.current
     if (!drag || drag.pointerId !== e.pointerId) return
     const nextX = e.clientX - drag.offsetX
@@ -114,7 +141,7 @@ export default function Window({
   } | null>(null)
 
   const beginResize = (dir: ResizeDir) => (e: ReactPointerEvent<HTMLDivElement>) => {
-    if (isMaximized) return
+    if (isMaximized || isMobile) return
     e.stopPropagation()
     resizeState.current = {
       pointerId: e.pointerId,
@@ -193,9 +220,11 @@ export default function Window({
 
   return (
     <section
+      ref={containerRef}
       className={[
         'os-window',
         isMaximized ? 'os-window--maximized' : '',
+        isMobile ? 'os-window--mobile' : '',
         isFocused ? 'os-window--focused' : '',
         animationPhase === 'minimizing' ? 'os-window--minimizing' : '',
         animationPhase === 'restoring' ? 'os-window--restoring' : '',
@@ -203,7 +232,7 @@ export default function Window({
         .filter(Boolean)
         .join(' ')}
       style={
-        isMaximized
+        isMaximized || isMobile
           ? { zIndex }
           : { left: x, top: y, width, height, zIndex }
       }
@@ -216,61 +245,100 @@ export default function Window({
       role="dialog"
       aria-label={title}
     >
+      {/* Real WebGL glass — lens distortion + chromatic aberration +
+          variable blur, sampling the shared desktop background
+          (see GlassCanvas.tsx). Sits behind titlebar/content and in
+          front of this section's own CSS backdrop-filter background
+          (see .os-window / .os-window__glass-canvas in
+          PortfolioOS.css) — an enhancement layer, not a replacement,
+          so there's no broken/blank state without WebGL2. */}
+      <GlassCanvas
+        containerRef={containerRef}
+        x={x}
+        y={y}
+        width={width}
+        height={height}
+        isMaximized={isMaximized}
+        isMobile={isMobile}
+        theme={resolvedTheme}
+      />
       <div
         className="os-window__titlebar"
         onPointerDown={handleTitlePointerDown}
         onPointerMove={handleTitlePointerMove}
         onPointerUp={handleTitlePointerUp}
-        onDoubleClick={onToggleMaximize}
+        onDoubleClick={isMobile ? undefined : onToggleMaximize}
       >
-        <div
-          className="os-traffic"
-          onDoubleClick={(e) => e.stopPropagation()}
-        >
+        {isMobile ? (
+          // Mobile takeover: one clear way back to the home screen
+          // instead of macOS traffic lights that assume a mouse and a
+          // desktop full of other windows to switch between.
           <button
-            className="os-traffic__btn os-traffic__btn--close"
-            onClick={onClose}
-            aria-label={`Close ${title}`}
+            className="os-window__back"
+            onClick={onBack ?? onClose}
+            aria-label={`Back to home from ${title}`}
           >
-            <svg viewBox="0 0 10 10" className="os-traffic__glyph">
+            <svg viewBox="0 0 10 10" className="os-window__back-glyph" aria-hidden="true">
               <path
-                d="M2.2 2.2 L7.8 7.8 M7.8 2.2 L2.2 7.8"
-                stroke="#5c0e0a"
+                d="M6.5 1.5 L2.5 5 L6.5 8.5"
+                fill="none"
                 strokeWidth="1.4"
-                strokeLinecap="round"
-              />
-            </svg>
-          </button>
-          <button
-            className="os-traffic__btn os-traffic__btn--min"
-            onClick={onMinimize}
-            aria-label={`Minimize ${title}`}
-          >
-            <svg viewBox="0 0 10 10" className="os-traffic__glyph">
-              <path
-                d="M2 5 H8"
-                stroke="#5c4405"
-                strokeWidth="1.4"
-                strokeLinecap="round"
-              />
-            </svg>
-          </button>
-          <button
-            className="os-traffic__btn os-traffic__btn--max"
-            onClick={onToggleMaximize}
-            aria-label={`Maximize ${title}`}
-          >
-            <svg viewBox="0 0 10 10" className="os-traffic__glyph">
-              <path
-                d="M2.4 6.6 L4.6 4.4 M4.6 4.4 H2.9 M4.6 4.4 V6.1 M7.6 3.4 L5.4 5.6 M5.4 5.6 H7.1 M5.4 5.6 V3.9"
-                stroke="#0d5b1a"
-                strokeWidth="1.2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
               />
             </svg>
+            <span>Home</span>
           </button>
-        </div>
+        ) : (
+          <div
+            className="os-traffic"
+            onDoubleClick={(e) => e.stopPropagation()}
+          >
+            <button
+              className="os-traffic__btn os-traffic__btn--close"
+              onClick={onClose}
+              aria-label={`Close ${title}`}
+            >
+              <svg viewBox="0 0 10 10" className="os-traffic__glyph">
+                <path
+                  d="M2.2 2.2 L7.8 7.8 M7.8 2.2 L2.2 7.8"
+                  stroke="#5c0e0a"
+                  strokeWidth="1.4"
+                  strokeLinecap="round"
+                />
+              </svg>
+            </button>
+            <button
+              className="os-traffic__btn os-traffic__btn--min"
+              onClick={onMinimize}
+              aria-label={`Minimize ${title}`}
+            >
+              <svg viewBox="0 0 10 10" className="os-traffic__glyph">
+                <path
+                  d="M2 5 H8"
+                  stroke="#5c4405"
+                  strokeWidth="1.4"
+                  strokeLinecap="round"
+                />
+              </svg>
+            </button>
+            <button
+              className="os-traffic__btn os-traffic__btn--max"
+              onClick={onToggleMaximize}
+              aria-label={`Maximize ${title}`}
+            >
+              <svg viewBox="0 0 10 10" className="os-traffic__glyph">
+                <path
+                  d="M2.4 6.6 L4.6 4.4 M4.6 4.4 H2.9 M4.6 4.4 V6.1 M7.6 3.4 L5.4 5.6 M5.4 5.6 H7.1 M5.4 5.6 V3.9"
+                  stroke="#0d5b1a"
+                  strokeWidth="1.2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </button>
+          </div>
+        )}
         <span className="os-window__title">{title}</span>
         <span className="os-window__titlebar-spacer" aria-hidden="true" />
       </div>
@@ -283,7 +351,7 @@ export default function Window({
       */}
       <div className="os-window__content">{children}</div>
 
-      {!isMaximized && (
+      {!isMaximized && !isMobile && (
         <>
           {edgeHandle('n', 'n')}
           {edgeHandle('s', 's')}
