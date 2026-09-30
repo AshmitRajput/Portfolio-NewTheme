@@ -6,7 +6,7 @@ A portfolio site that doesn't look like a portfolio site — it's a fully intera
 
 ## 📌 Project Overview
 
-Most developer portfolios are a single scrolling page. RI/OS is instead a small, self-contained operating-system simulation: a menu bar, a dock, desktop icons, draggable/resizable windows, light/dark/system theming, and a right-rail of live widgets (LinkedIn activity, tips, shortcuts, a calendar) — all built from scratch in React, with no OS-simulation library underneath.
+Most developer portfolios are a single scrolling page. AR/OS is instead a small, self-contained operating-system simulation: a menu bar, a dock, desktop icons, draggable/resizable windows, light/dark/system theming, and a right-rail of live widgets (LinkedIn activity, tips, shortcuts, a calendar) — all built from scratch in React, with no OS-simulation library underneath.
 
 Every "app" (About, Projects, Experience, Skills, Resume, Contact, Terminal, Settings) is a real, independent component rendered inside the window manager, and every visual surface — window chrome, the dock, the widget rail — uses a genuine glassmorphism material system, including a real-time WebGL shader layer for optical lens distortion and chromatic aberration, not just a CSS blur.
 
@@ -77,7 +77,7 @@ The shader layer renders on demand (window move/resize/theme change), not in a c
 
 ## 📦 Key Learning Outcomes
 
-Building RI/OS meant going deep on a few things a typical portfolio never touches:
+Building AR/OS meant going deep on a few things a typical portfolio never touches:
 
 - Implementing a from-scratch window manager: drag/resize physics, focus/z-index management, and animation lifecycle (minimize → remove from DOM only after the CSS animation actually finishes).
 - Real-time GLSL/WebGL2 programming — signed-distance-style radial fields, lens refraction curves, and chromatic aberration — and integrating a raw WebGL canvas cleanly inside a React component tree.
